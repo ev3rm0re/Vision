@@ -4,6 +4,7 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/**",
+                "${workspaceFolder}/include",
                 "D:/Vision/opencv-4.9.0/build/install/include",
                 "D:/Vision/openvino/runtime/include",
                 "D:/Program Files/MVS/Development/Includes",

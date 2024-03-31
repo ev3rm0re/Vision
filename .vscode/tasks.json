@@ -7,15 +7,20 @@
             "args": [
                 "-fdiagnostics-color=always",
                 "-g",
+                "./src/camera.cpp",
                 "${file}",
                 "-o",
                 "${fileDirname}/${fileBasenameNoExtension}.exe",
+                "-I", "${workspaceFolder}/include",
                 "-I", "D:/Vision/opencv-4.9.0/build/install/include",
                 "-L", "D:/Vision/opencv-4.9.0/build/install/x64/mingw/lib",
                 "-lopencv_world490",
                 "-I", "D:/Vision/openvino/runtime/include",
                 "-L", "D:/Vision/openvino/runtime/bin/intel64/Release",
                 "-lopenvino",
+                "-I", "D:/Program Files/MVS/Development/Includes",
+                "-L", "D:/Program Files/MVS/Development/Libraries/win64",
+                "-lMvCameraControl",
                 "-std=c++17"
             ],
             "options": {
@@ -37,15 +42,20 @@
             "args": [
                 "-fdiagnostics-color=always",
                 "-g",
+                "./src/camera.cpp",
                 "${file}",
                 "-o",
                 "${fileDirname}/${fileBasenameNoExtension}.exe",
+                "-I", "${workspaceFolder}/include",
                 "-I", "D:/Vision/opencv-4.9.0/build/install/include",
                 "-L", "D:/Vision/opencv-4.9.0/build/install/x64/mingw/lib",
                 "-lopencv_world490",
                 "-I", "D:/Vision/openvino/runtime/include",
                 "-L", "D:/Vision/openvino/runtime/bin/intel64/Release",
                 "-lopenvino",
+                "-I", "D:/Program Files/MVS/Development/Includes",
+                "-L", "D:/Program Files/MVS/Development/Libraries/win64",
+                "-lMvCameraControl",
                 "-std=c++17"
             ],
             "options": {
