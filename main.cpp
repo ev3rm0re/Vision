@@ -1,16 +1,15 @@
 #include <iostream>
 
 #include <opencv2/opencv.hpp>
-#include <openvino/core/core.hpp>
+#include <openvino/openvino.hpp>
 #include <camera.hpp>
 #include <chrono>
-
 
 int main()
 {
     ov::Version version = ov::get_openvino_version();
     std::cout << "OpenVINO version: " << version.buildNumber << std::endl;
-    
+    ov::Core core;
     HIK::Camera camera;
     camera.open();
     std::chrono::steady_clock::time_point begin, end;

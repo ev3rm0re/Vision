@@ -1,30 +1,40 @@
 cmake_minimum_required(VERSION 3.5.0)
-project(Vision_WinVersion VERSION 0.1.0 LANGUAGES C CXX)
+project(armor_detect VERSION 0.1.0 LANGUAGES C CXX)
 
 include(CTest)
 enable_testing()
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-include_directories(${PROJECT_SOURCE_DIR}/include)
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release")
+endif()
 
-include_directories("D:/Vision/opencv-4.9.0/build/install/include")
-include_directories("D:/Vision/openvino/runtime/include")
-include_directories("D:/Program Files/MVS/Development/Includes")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(OpenCV_LIB $ENV{OpenCV_DIR}/build/x64/vc16/lib/opencv_world490d.lib)
+    set(OpenVINO_LIB $ENV{OpenVINO_DIR}/runtime/lib/intel64/Debug/openvinod.lib)
+else()
+    set(OpenCV_LIB $ENV{OpenCV_DIR}/build/x64/vc16/lib/opencv_world490.lib)
+    set(OpenVINO_LIB $ENV{OpenVINO_DIR}/runtime/lib/intel64/Release/openvino.lib)
+endif()
 
-link_directories("D:/Vision/opencv-4.9.0/build/install/x64/mingw/lib")
-link_directories("D:/Vision/openvino/runtime/bin/intel64/Release")
-link_directories("D:/Program Files/MVS/Development/Libraries/win64")
+include_directories(${PROJECT_SOURCE_DIR}/include
+    $ENV{OpenCV_DIR}/build/include
+    $ENV{OpenVINO_DIR}/runtime/include
+    $ENV{MVCAM_COMMON_RUNENV}/Includes
+)
 
-link_libraries("D:/Vision/opencv-4.9.0/build/install/x64/mingw/lib/libopencv_world490.dll.a")
-link_libraries("D:/Vision/openvino/runtime/bin/intel64/Release/openvino.dll")
-link_libraries("D:/Program Files/MVS/Development/Libraries/win64/MvCameraControl.lib")
+link_libraries(
+    ${OpenCV_LIB}
+    ${OpenVINO_LIB}
+    $ENV{MVCAM_COMMON_RUNENV}/Libraries/win64/MvCameraControl.lib
+)
 
-add_executable(Vision_WinVersion main.cpp ./src/camera.cpp)
+add_executable(armor_detect main.cpp src/camera.cpp)
 
-target_link_libraries(Vision_WinVersion "D:/Vision/opencv-4.9.0/build/install/x64/mingw/lib/libopencv_world490.dll.a")
-target_link_libraries(Vision_WinVersion "D:/Vision/openvino/runtime/bin/intel64/Release/openvino.dll")
-target_link_libraries(Vision_WinVersion "D:/Program Files/MVS/Development/Libraries/win64/MvCameraControl.lib")
+target_link_libraries(armor_detect
+    ${OpenCV_LIB}
+    ${OpenVINO_LIB}
+    $ENV{MVCAM_COMMON_RUNENV}/Libraries/win64/MvCameraControl.lib
+)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
