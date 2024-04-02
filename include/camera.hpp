@@ -10,14 +10,17 @@ namespace HIK
             ~Camera();
             bool open();
             void close();
-            cv::Mat capture();
+            void capture(cv::Mat* srcimg);
         private:
             int nRet;
             bool isCameraOpened;
             void* handle;
-            unsigned char* pData;
+            unsigned char* pDataForBGR;
             unsigned int nPayloadSize;
-            MV_FRAME_OUT_INFO_EX stImageInfo;
+            MV_CC_DEVICE_INFO* pDeviceInfo;
+            MV_CC_DEVICE_INFO_LIST stDeviceList;
             MVCC_INTVALUE stParam;
+            MV_FRAME_OUT stOutFrame;
+            MV_CC_PIXEL_CONVERT_PARAM CvtParam;
     };
 } // namespace HIK

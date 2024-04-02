@@ -17,14 +17,14 @@ int main()
     while (true)
     {
         begin = std::chrono::steady_clock::now();
-        frame = camera.capture();
+        camera.capture(&frame);
         end = std::chrono::steady_clock::now();
         std::chrono::duration<double> elapsed_seconds = end - begin;
         cv::putText(frame, "FPS: " + std::to_string(1.0 / elapsed_seconds.count()), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 2);
         cv::imshow("frame", frame);
-        if (cv::waitKey(100) == 27)
+        if (cv::waitKey(1) == 27)
         {
-            break;
+            continue;
         }
     }
 
