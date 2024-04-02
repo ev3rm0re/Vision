@@ -1,5 +1,4 @@
 #include <MvCameraControl.h>
-#include <MvSdkExport.h>
 #include <opencv2/opencv.hpp>
 
 namespace HIK
@@ -9,10 +8,16 @@ namespace HIK
         public:
             Camera();
             ~Camera();
-            void open();
+            bool open();
+            void close();
             cv::Mat capture();
         private:
-            void* m_hDevHandle;
-            MV_FRAME_OUT stOutFrame;
+            int nRet;
+            bool isCameraOpened;
+            void* handle;
+            unsigned char* pData;
+            unsigned int nPayloadSize;
+            MV_FRAME_OUT_INFO_EX stImageInfo;
+            MVCC_INTVALUE stParam;
     };
 } // namespace HIK

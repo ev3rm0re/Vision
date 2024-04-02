@@ -1,78 +1,146 @@
 ﻿#include "camera.hpp"
-#include <iostream>
-#include <string.h>
 
 namespace HIK
 {
     Camera::Camera()
     {
-        m_hDevHandle = NULL;
-        stOutFrame = {0};
-        memset(&stOutFrame, 0, sizeof(MV_FRAME_OUT));
+        isCameraOpened = false;
+        handle = NULL;
     }
 
     Camera::~Camera()
     {
-        if (m_hDevHandle)
+        if (isCameraOpened)
         {
-            MV_CC_DestroyHandle(m_hDevHandle);
-            m_hDevHandle = 0;
+            close();
+        }
+        if (handle != NULL)
+        {
+            MV_CC_DestroyHandle(handle);
         }
     }
 
-    void Camera::open()
-    {   // 遍历设备列表
-        MV_CC_DEVICE_INFO_LIST stDevList;
-        memset(&stDevList, 0, sizeof(MV_CC_DEVICE_INFO_LIST));
-        int nRet = MV_CC_EnumDevices(MV_GIGE_DEVICE | MV_USB_DEVICE, &stDevList);
+    bool Camera::open()
+    {
+        MV_CC_DEVICE_INFO_LIST stDeviceList;
+        memset(&stDeviceList, 0, sizeof(MV_CC_DEVICE_INFO_LIST));
+        nRet = MV_CC_EnumDevices(MV_GIGE_DEVICE | MV_USB_DEVICE, &stDeviceList);
         if (MV_OK != nRet)
         {
             std::cerr << "MV_CC_EnumDevices fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
-            return;
+            return false;
         }
-        if (stDevList.nDeviceNum == 0)
+        if (stDeviceList.nDeviceNum > 0)
         {
-            std::cerr << "Find no device!" << std::endl;
-            return;
+            for (unsigned int i = 0; i < stDeviceList.nDeviceNum; i++)
+            {
+                std::cout << "Device: " << i << std::endl;
+                MV_CC_DEVICE_INFO* pDeviceInfo = stDeviceList.pDeviceInfo[i];
+                if (NULL == pDeviceInfo)
+                {
+                    break;
+                }
+                std::cout << "Device: " << i << std::endl;
+            }
         }
-        // 创建设备句柄并打开设备
-        nRet = MV_CC_CreateHandle(&m_hDevHandle, stDevList.pDeviceInfo[0]);
+        else
+        {
+            std::cerr << "No device found!" << std::endl;
+            return false;
+        }
+
+        // 选择相机
+        unsigned int nIndex = 0;
+        nRet = MV_CC_CreateHandle(&handle, stDeviceList.pDeviceInfo[nIndex]);
         if (MV_OK != nRet)
         {
             std::cerr << "MV_CC_CreateHandle fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
-            return;
+            return false;
         }
-        nRet = MV_CC_OpenDevice(m_hDevHandle);
+
+        // 打开相机
+        nRet = MV_CC_OpenDevice(handle);
         if (MV_OK != nRet)
         {
             std::cerr << "MV_CC_OpenDevice fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
-            return;
+            return false;
         }
-        // 设置曝光时间、增益、像素格式
-        int nRet_Format = MV_CC_SetEnumValue(m_hDevHandle, "PixelFormat", PixelType_Gvsp_RGB8_Packed);
-        int nRet_ExA = MV_CC_SetEnumValue(m_hDevHandle, "ExposureAuto", MV_EXPOSURE_AUTO_MODE_OFF);
-        int nRet_ExT = MV_CC_SetFloatValue(m_hDevHandle, "ExposureTime", 5000);
-        int nRet_Gain = MV_CC_SetFloatValue(m_hDevHandle, "Gain", 8.0);
-        if (MV_OK != nRet_Format || MV_OK != nRet_ExA || MV_OK != nRet_ExT || MV_OK != nRet_Gain)
+
+        // 关闭触发模式
+        nRet = MV_CC_SetEnumValue(handle, "TriggerMode", MV_TRIGGER_MODE_OFF);
+        if (MV_OK != nRet)
         {
-            std::cerr << "MV_CC_SetValue fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
-            return;
+            std::cerr << "MV_CC_SetEnumValue fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
+            return false;
         }
-        // 开始采集
-        nRet = MV_CC_StartGrabbing(m_hDevHandle);
+
+        // 设置图像格式
+        nRet = MV_CC_SetEnumValue(handle, "PixelFormat", PixelType_Gvsp_BGR8_Packed);
+        if (MV_OK != nRet)
+        {
+            std::cerr << "MV_CC_SetEnumValue fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
+            return false;
+        }
+
+        // 获取图像大小
+        memset(&stParam, 0, sizeof(MVCC_INTVALUE));
+        nRet = MV_CC_GetIntValue(handle, "PayloadSize", &stParam);
+        if (MV_OK != nRet)
+        {
+            std::cerr << "MV_CC_GetIntValue fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
+        }
+        nPayloadSize = stParam.nCurValue;
+
+        // 初始化图像信息
+        MV_FRAME_OUT_INFO_EX stImageInfo = {0};
+        memset(&stImageInfo, 0, sizeof(MV_FRAME_OUT_INFO_EX));
+        pData = (unsigned char*)malloc(nPayloadSize);
+        if (NULL == pData)
+        {
+            std::cerr << "malloc fail!" << std::endl;
+        }
+        memset(pData, 0, sizeof(pData));
+
+        // 开始取流
+        nRet = MV_CC_StartGrabbing(handle);
         if (MV_OK != nRet)
         {
             std::cerr << "MV_CC_StartGrabbing fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
-            return;
+            return false;
         }
+        return true;
     }
 
     cv::Mat Camera::capture()
-    {   // 获取图像
-        MV_CC_GetImageBuffer(m_hDevHandle, &stOutFrame, 1000);
-        cv::Mat frame(stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth, CV_8UC3, stOutFrame.pBufAddr);
-        cv::cvtColor(frame, frame, cv::COLOR_RGB2BGR);
-        MV_CC_FreeImageBuffer(m_hDevHandle, &stOutFrame);
-        return frame;
+    {
+        nPayloadSize = stParam.nCurValue;
+        memset(pData, 0, sizeof(pData));
+        nRet = MV_CC_GetOneFrameTimeout(handle, pData, nPayloadSize, &stImageInfo, 1000);
+        if (MV_OK != nRet)
+        {
+            std::cerr << "MV_CC_GetOneFrameTimeout fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
+            return cv::Mat();
+        }
+        if (stImageInfo.enPixelType == PixelType_Gvsp_BGR8_Packed)
+        {
+            cv::Mat frame(stImageInfo.nHeight, stImageInfo.nWidth, CV_8UC3, pData);
+            return frame;
+        }
+        else if (stImageInfo.enPixelType == PixelType_Gvsp_Mono8)
+        {
+            cv::Mat frame(stImageInfo.nHeight, stImageInfo.nWidth, CV_8UC1, pData);
+            return frame;
+        }
+        else
+        {
+            std::cerr << "Unsupported pixel type!" << std::endl;
+            return cv::Mat();
+        }
+    }
+
+    void Camera::close()
+    {
+        MV_CC_StopGrabbing(handle);
+        MV_CC_CloseDevice(handle);
     }
 }
