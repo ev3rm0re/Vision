@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include <iostream>
 #include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui.hpp>
@@ -16,7 +16,8 @@ using namespace cv;
 using namespace std;
 using namespace auto_aim;
 
-int main(){
+void detect()
+{
     HIK::Camera camera;
     string xml_path = "/home/ev3rm0re/workspace/Vision_CmakeGcc/models/03.16_yolov8n_e50_int8.xml";
     string bin_path = "/home/ev3rm0re/workspace/Vision_CmakeGcc/models/03.16_yolov8n_e50_int8.bin";
@@ -62,6 +63,96 @@ int main(){
         if (waitKey(1) == 27) {
             break;
         }
+    }
+}
+
+void calibrate()
+{
+    // 设置棋盘格的尺寸（内角点数）
+    Size boardSize(8, 6); // 在此示例中，我们使用8x6的棋盘格
+
+    // 准备存储角点坐标的向量
+    vector<vector<Point3f>> objectPoints; // 世界坐标系中的3D点
+    vector<vector<Point2f>> imagePoints;  // 图像平面中的2D点
+
+    // 准备棋盘格角点的3D坐标
+    vector<Point3f> obj;
+    for (int i = 0; i < boardSize.height; i++) {
+        for (int j = 0; j < boardSize.width; j++) {
+            obj.push_back(Point3f(j, i, 0));
+        }
+    }
+
+    // 打开摄像头
+    HIK::Camera camera;
+    camera.open();
+
+    Mat frame;
+    vector<Point2f> corners;
+    bool calibrationDone = false;
+
+    while (!calibrationDone) {
+        camera.cap(&frame); // 从摄像头捕获一帧图像
+
+        // 查找棋盘格角点
+        bool found = findChessboardCorners(frame, boardSize, corners);
+        if (found) {
+            Mat gray;
+            cvtColor(frame, gray, COLOR_BGR2GRAY);
+            cornerSubPix(gray, corners, Size(11, 11), Size(-1, -1),
+                             TermCriteria(TermCriteria::EPS | TermCriteria::MAX_ITER, 30, 0.1));
+            imagePoints.push_back(corners);
+            objectPoints.push_back(obj);
+
+            // 显示角点
+            drawChessboardCorners(frame, boardSize, Mat(corners), found);
+        }
+
+        imshow("Calibration", frame);
+
+        // 等待按键，按下ESC键退出标定
+        char key = waitKey(1000);
+        if (key == 27) {
+            break;
+        }
+        // 标定至少使用了6个图像时退出
+        if (imagePoints.size() >= 6) {
+            calibrationDone = true;
+        }
+    }
+
+    camera.close(); // 释放摄像头
+
+    // 检查是否至少有一个图像成功找到了角点
+    if (imagePoints.empty()) {
+        cerr << "No images with chessboard corners found. Exiting." << endl;
+        return;
+    }
+
+    // 相机标定
+    Mat cameraMatrix, distCoeffs;
+    vector<Mat> rvecs, tvecs;
+    calibrateCamera(objectPoints, imagePoints, frame.size(), cameraMatrix, distCoeffs, rvecs, tvecs);
+
+    // 输出相机内参和畸变参数
+    cout << "Camera matrix:" << endl << cameraMatrix << endl;
+    cout << "Distortion coefficients:" << endl << distCoeffs << endl;
+    return;
+}
+
+int main(int argc, char** argv){
+    if (argc < 2) {
+        cout << "Usage: " << argv[0] << " [calibrate|detect]" << endl;
+        return 1;
+    }
+    string mode = argv[1];
+    if (mode == "calibrate") {
+        calibrate();
+    } else if (mode == "detect") {
+        detect();
+    } else {
+        cout << "Usage: " << argv[0] << " [calibrate|detect]" << endl;
+        return 1;
     }
     return 0;
 }
