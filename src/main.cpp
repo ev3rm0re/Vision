@@ -17,8 +17,8 @@ using namespace auto_aim;
 
 int main(){
     HIK::Camera camera;
-    string xml_path = "/home/ev3rm0re/workspace/Vision_CmakeGcc/models/03.16_yolov8n_e50_int8.xml";
-    string bin_path = "/home/ev3rm0re/workspace/Vision_CmakeGcc/models/03.16_yolov8n_e50_int8.bin";
+    string xml_path = "/home/ev3rm0re/workspace/Vision_CmakeGcc/models/03.16_yolov8n_e50.xml";
+    string bin_path = "/home/ev3rm0re/workspace/Vision_CmakeGcc/models/03.16_yolov8n_e50.bin";
     unique_ptr<YoloDet> det = make_unique<YoloDet>(xml_path, bin_path);
     unique_ptr<ArmorDet> armor_det = make_unique<ArmorDet>();
 
@@ -32,9 +32,9 @@ int main(){
     vector<vector<double>> datas;
 
     Mat frame;
-    camera.open();
+    bool isopened = camera.open();
 
-    while(1){
+    while(isopened){
         auto start = chrono::high_resolution_clock::now();
         camera.cap(&frame);
         Tensor output = det.get()->infer(frame);
@@ -42,7 +42,7 @@ int main(){
         vector<Armor> armors = armor_det.get()->detect(results, frame);
         auto end = chrono::high_resolution_clock::now();
         double fps = 1e9 / chrono::duration_cast<chrono::nanoseconds>(end - start).count();
-        putText(frame, "FPS: " + to_string(fps).substr(0, 4), Point(10, 30), FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 255, 0), 2);
+        putText(frame, "FPS: " + to_string(fps).substr(0, 5), Point(10, 30), FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 255, 0), 2);
         for (Armor armor : armors) {
             datas.push_back(pnp_solver.solve(armor));
 			line(frame, armor.left_light.top, armor.right_light.bottom, Scalar(0, 255, 0), 2);

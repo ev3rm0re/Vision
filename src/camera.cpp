@@ -7,7 +7,6 @@ namespace HIK
         nRet = MV_OK;
         isCameraOpened = false;
         handle = NULL;
-        nPayloadSize = 0;
         memset(&stParam, 0, sizeof(MVCC_INTVALUE));
         CvtParam = {0};
         stOutFrame = {0};
@@ -75,14 +74,14 @@ namespace HIK
         }
 
         // 设置图像格式
-        nRet = MV_CC_SetEnumValue(handle, "PixelFormat", 0x0210001F);
+        nRet = MV_CC_SetEnumValue(handle, "PixelFormat", PixelType_Gvsp_BayerGB8);
         if (MV_OK != nRet)
         {
             std::cerr << "MV_CC_SetEnumValue fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
             return false;
         }
         // 设置曝光时间
-        nRet = MV_CC_SetFloatValue(handle, "ExposureTime", 10000);
+        nRet = MV_CC_SetFloatValue(handle, "ExposureTime", 3000);
         if (MV_OK != nRet)
         {
             std::cerr << "MV_CC_SetFloatValue fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
@@ -96,14 +95,6 @@ namespace HIK
             return false;
         }
 
-        // 获取图像大小
-        nRet = MV_CC_GetIntValue(handle, "PayloadSize", &stParam);
-        if (MV_OK != nRet)
-        {
-            std::cerr << "MV_CC_GetIntValue fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
-        }
-        nPayloadSize = stParam.nCurValue;
-
         // 开始取流
         nRet = MV_CC_StartGrabbing(handle);
         if (MV_OK != nRet)
@@ -111,6 +102,25 @@ namespace HIK
             std::cerr << "MV_CC_StartGrabbing fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
             return false;
         }
+
+        // 获取图像大小
+        nRet = MV_CC_GetImageBuffer(handle, &stOutFrame, 400);
+        if (MV_OK != nRet)
+        {
+            std::cerr << "MV_CC_GetImageBuffer fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
+            return false;
+        }
+        CvtParam.enSrcPixelType = stOutFrame.stFrameInfo.enPixelType;
+        CvtParam.enDstPixelType = PixelType_Gvsp_BGR8_Packed;
+        CvtParam.nWidth = stOutFrame.stFrameInfo.nWidth;
+        CvtParam.nHeight = stOutFrame.stFrameInfo.nHeight;
+        pDataForBGR = (unsigned char*)malloc(stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight * 4 + 2048);
+        if (NULL != stOutFrame.pBufAddr)
+        {
+            MV_CC_FreeImageBuffer(handle, &stOutFrame);
+        }
+
+        isCameraOpened = true;
         return true;
     }
 
@@ -121,11 +131,6 @@ namespace HIK
         {
             std::cerr << "MV_CC_GetImageBuffer fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
         }
-        CvtParam.enSrcPixelType = stOutFrame.stFrameInfo.enPixelType;
-        CvtParam.enDstPixelType = PixelType_Gvsp_BGR8_Packed;
-        CvtParam.nWidth = stOutFrame.stFrameInfo.nWidth;
-        CvtParam.nHeight = stOutFrame.stFrameInfo.nHeight;
-        pDataForBGR = (unsigned char*)malloc(stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight * 4 + 2048);
         CvtParam.pSrcData = stOutFrame.pBufAddr;
         CvtParam.nSrcDataLen = stOutFrame.stFrameInfo.nFrameLen;
         CvtParam.nDstBufferSize = stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight * 4 + 2048;
