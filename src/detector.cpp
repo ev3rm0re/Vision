@@ -242,8 +242,8 @@ namespace auto_aim
         this->camera_matrix = camera_matrix;
         this->dist_coeffs = dist_coeffs;
         // 初始化物体坐标
-        object_points = {Point3f(0, 0, 0), Point3f(55 / 2, -135 / 2, 0), Point3f(-55 / 2, -135 / 2, 0),
-                         Point3f(-55 / 2, 135 / 2, 0), Point3f(55 / 2, 135 / 2, 0)}; // mm为单位
+        object_points = {Point3f(0, 0, 0), Point3f(0.055 / 2, -0.135 / 2, 0), Point3f(-0.055 / 2, -0.135 / 2, 0),
+                         Point3f(-0.055 / 2, 0.135 / 2, 0), Point3f(0.055 / 2, 0.135 / 2, 0)}; // m为单位
     }
 
     vector<double> PnPSolver::solve(const Armor &armor)

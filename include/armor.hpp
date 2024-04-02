@@ -65,6 +65,7 @@ namespace auto_aim
         std::string number;
         float confidence = 0.0;
         float yolo_confidence = 0.0;
+        float distance = 0.0;
         std::string classfication_result;
     };
 }

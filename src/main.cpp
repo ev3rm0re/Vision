@@ -30,7 +30,7 @@ int main(){
     Mat distortion_coefficients = Mat(1, 5, CV_32F, distortion_coefficients_vector.data());
     PnPSolver pnp_solver(camera_matrix, distortion_coefficients);
 
-    NumberClassifier nc("/home/ev3rm0re/workspace/Vision_CmakeGcc/models/mlp.onnx", "/home/ev3rm0re/workspace/Vision_CmakeGcc/models/label.txt", 0.5);
+    NumberClassifier nc("/home/ev3rm0re/workspace/Vision_CmakeGcc/models/mlp.onnx", "/home/ev3rm0re/workspace/Vision_CmakeGcc/models/label.txt", 0.6);
 
     vector<vector<double>> datas;
 
@@ -50,10 +50,12 @@ int main(){
         nc.classify(armors);
         for (Armor armor : armors) {
             datas.push_back(pnp_solver.solve(armor));
+            armor.distance = datas.back()[2];
 			line(frame, armor.left_light.top, armor.right_light.bottom, Scalar(0, 255, 0), 2);
             line(frame, armor.left_light.bottom, armor.right_light.top, Scalar(0, 255, 0), 2);
-            putText(frame, armor.classfication_result, armor.left_light.top, FONT_HERSHEY_SIMPLEX, 0.8, Scalar(0, 255, 0), 2);
-            putText(frame, to_string(armor.yolo_confidence).substr(0, 2), armor.right_light.bottom, FONT_HERSHEY_SIMPLEX, 0.8, Scalar(0, 255, 0), 2);
+            putText(frame, armor.classfication_result, armor.right_light.top + Point2f(5, -20), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 2);
+            putText(frame, "yolo conf: " + to_string(armor.yolo_confidence).substr(0, 2), armor.right_light.center + Point2f(5, 0), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 2);
+            putText(frame, "distance: " + to_string(armor.distance).substr(0, 4) + "M", armor.right_light.bottom + Point2f(5, 20), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 2);
 		}
         // TODO: 通过串口发送数据
         imshow("frame", frame);
