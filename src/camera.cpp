@@ -114,7 +114,7 @@ namespace HIK
         return true;
     }
 
-    void Camera::capture(cv::Mat* srcimg)
+    void Camera::cap(cv::Mat* srcimg)
     {
         nRet = MV_CC_GetImageBuffer(handle, &stOutFrame, 400);
         if (MV_OK != nRet)
