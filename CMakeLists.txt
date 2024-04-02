@@ -7,22 +7,26 @@ enable_testing()
 find_library(OpenVINO_LIBRARIES NAMES libopenvino.so HINTS /usr/lib)
 find_package(OpenVINO REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(yaml-cpp REQUIRED)
+find_library(YAMLCPP_LIBRARIES NAMES libyaml-cpp.so HINTS /usr/lib)
 
 include_directories(${OpenCV_INCLUDE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(/opt/MVS/include)
+include_directories(/usr/include/yaml-cpp)
 
 link_libraries(
     /opt/MVS/lib/64/libMvCameraControl.so
     /usr/local/lib/libopencv_world.so
     ${OpenVINO_LIBRARIES}
+    ${YAMLCPP_LIBRARIES}
 )
 
 link_directories(/usr/lib)
 
-add_executable(Vision main.cpp src/camera.cpp)
+add_executable(Vision src/main.cpp src/camera.cpp src/detector.cpp)
 
-target_link_directories(Vision PUBLIC /opt/MVS/lib ${OpenVINO_INCLUDE_DIRS})
+target_link_directories(Vision PUBLIC /opt/MVS/lib)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
