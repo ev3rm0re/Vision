@@ -64,9 +64,16 @@ void detect()
 
     // 用于存储图像帧
     Mat frame;
+
+    // 打开摄像头
     bool isopened = camera.open();
 
-    while(isopened){
+    // 用于追踪
+    bool tracker_initialized = false;
+    int id = 0;
+
+    while (isopened)
+    {
         auto start = chrono::high_resolution_clock::now();
         camera.cap(&frame);
         Tensor output = det.get()->infer(frame);
@@ -74,7 +81,7 @@ void detect()
         vector<Armor> armors = armor_det.get()->detect(results, frame);
         nc.extractNumbers(frame, armors);
         nc.classify(armors);
-        end = chrono::high_resolution_clock::now();
+        auto end = chrono::high_resolution_clock::now();
         double fps = 1e9 / chrono::duration_cast<chrono::nanoseconds>(end - start).count();
         putText(frame, "FPS: " + to_string(fps).substr(0, 5), Point(10, 30), FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 255, 0), 2);
         for (Armor armor : armors)
