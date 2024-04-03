@@ -1,3 +1,7 @@
+/*
+数字识别模块
+*/
+
 // OpenCV
 #include <opencv2/core.hpp>
 #include <opencv2/core/mat.hpp>
@@ -140,4 +144,4 @@ void NumberClassifier::classify(std::vector<Armor> & armors)
     armors.end());
 }
 
-}  // namespace rm_auto_aim
+}  // namespace auto_aim

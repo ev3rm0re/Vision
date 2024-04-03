@@ -58,7 +58,16 @@ void detect()
             putText(frame, "yolo conf: " + to_string(armor.yolo_confidence).substr(0, 2), armor.right_light.center + Point2f(5, 0), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 2);
             putText(frame, "distance: " + to_string(armor.distance).substr(0, 4) + "M", armor.right_light.bottom + Point2f(5, 20), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 2);
 		}
-        // TODO: 通过串口发送数据
+        if (datas.size() > 0) {
+            sort(datas.begin(), datas.end(), [](vector<double> a, vector<double> b) { return a[2] < b[2]; }); // 按距离从小到大排序
+            datas.erase(datas.begin() + 1, datas.end()); // 只保留最近的目标
+
+            // TODO: 通过串口发送数据
+            cout << "distance: " << datas[0][2] << "M" << endl;
+            cout << "yaw" << datas[0][0] << " pitch" << datas[0][1] << endl;
+        }
+
+        datas.clear();
         imshow("frame", frame);
         if (waitKey(1) == 27) {
             break;

@@ -1,3 +1,9 @@
+/*
+装甲板结构体定义
+1. Light: 灯条结构体
+2. Armor: 装甲板结构体
+*/
+
 #ifndef _ARMOR_HPP_
 #define _ARMOR_HPP_
 

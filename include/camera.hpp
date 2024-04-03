@@ -1,3 +1,10 @@
+/*
+相机类定义
+*/
+
+#ifndef CAMERA_HPP
+#define CAMERA_HPP
+
 #include <MvCameraControl.h>
 #include <opencv2/opencv.hpp>
 
@@ -24,3 +31,5 @@ namespace HIK
             MV_CC_PIXEL_CONVERT_PARAM CvtParam;
     };
 } // namespace HIK
+
+#endif // CAMERA_HPP

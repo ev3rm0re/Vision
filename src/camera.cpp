@@ -1,4 +1,8 @@
-﻿#include "camera.hpp"
+﻿/*
+相机类的实现
+*/
+
+#include "camera.hpp"
 
 namespace HIK
 {

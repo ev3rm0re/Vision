@@ -1,3 +1,10 @@
+/*
+目标检测器
+1. YoloDet：YOLO目标检测器
+2. ArmorDet：装甲板检测器
+3. PnPSolver：PnP解算器
+*/
+
 #include "detector.hpp"
 #include <openvino/openvino.hpp>
 #include <opencv2/opencv.hpp>
@@ -254,11 +261,11 @@ namespace auto_aim
         solvePnP(object_points, image_points, camera_matrix, dist_coeffs, rvec, tvec);
         // 计算距离
         double distance = sqrt(pow(tvec.at<double>(0), 2) + pow(tvec.at<double>(1), 2) + pow(tvec.at<double>(2), 2));
-        cout << "distance: " << distance << endl;
+        // cout << "distance: " << distance << endl;
         // 计算角度
         double yaw = atan2(tvec.at<double>(0), tvec.at<double>(2));
         double pitch = atan2(tvec.at<double>(1), tvec.at<double>(2));
-        cout << "yaw: " << yaw << " pitch: " << pitch << endl;
+        // cout << "yaw: " << yaw << " pitch: " << pitch << endl;
         vector<double> data = {yaw, pitch, distance};
         return data;
     }

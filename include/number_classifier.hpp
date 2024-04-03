@@ -1,5 +1,9 @@
-#ifndef ARMOR_DETECTOR__NUMBER_CLASSIFIER_HPP_
-#define ARMOR_DETECTOR__NUMBER_CLASSIFIER_HPP_
+/*
+装甲板检测到之后的数字分类器
+*/
+
+#ifndef NUMBER_CLASSIFIER_HPP
+#define NUMBER_CLASSIFIER_HPP
 
 // OpenCV
 #include <opencv2/opencv.hpp>

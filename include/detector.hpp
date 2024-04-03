@@ -1,3 +1,10 @@
+/*
+装甲板检测的三个主要类
+YoloDet: 使用OpenVINO进行装甲板位置检测
+ArmorDet: 装甲板匹配检测
+PnPSolver: 通过PnP解算器求解装甲板的位置
+*/
+
 #ifndef DETECTOR_HPP
 #define DETECTOR_HPP
 

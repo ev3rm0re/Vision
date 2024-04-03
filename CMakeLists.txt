@@ -4,10 +4,11 @@ project(Vision VERSION 0.1.0 LANGUAGES C CXX)
 include(CTest)
 enable_testing()
 
-find_library(OpenVINO_LIBRARIES NAMES libopenvino.so HINTS /usr/lib)
 find_package(OpenVINO REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(yaml-cpp REQUIRED)
+
+find_library(OpenVINO_LIBRARIES NAMES libopenvino.so HINTS /usr/lib)
 find_library(YAMLCPP_LIBRARIES NAMES libyaml-cpp.so HINTS /usr/lib)
 
 include_directories(${OpenCV_INCLUDE_DIRS})
@@ -22,7 +23,7 @@ link_libraries(
     ${YAMLCPP_LIBRARIES}
 )
 
-link_directories(/usr/lib)
+# link_directories(/usr/lib)
 
 add_executable(Vision src/main.cpp src/camera.cpp src/detector.cpp src/number_classifier.cpp)
 
