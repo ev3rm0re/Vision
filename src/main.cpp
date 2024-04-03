@@ -48,17 +48,18 @@ void detect()
     vector<vector<double>> datas;
 
     Mat frame;
+    chrono::high_resolution_clock::time_point start, end;
     bool isopened = camera.open();
 
     while(isopened){
-        auto start = chrono::high_resolution_clock::now();
+        start = chrono::high_resolution_clock::now();
         camera.cap(&frame);
         Tensor output = det.get()->infer(frame);
         vector<vector<int>> results = det.get()->postprocess(output, 0.3, 0.5);
         vector<Armor> armors = armor_det.get()->detect(results, frame);
         nc.extractNumbers(frame, armors);
         nc.classify(armors);
-        auto end = chrono::high_resolution_clock::now();
+        end = chrono::high_resolution_clock::now();
         double fps = 1e9 / chrono::duration_cast<chrono::nanoseconds>(end - start).count();
         putText(frame, "FPS: " + to_string(fps).substr(0, 5), Point(10, 30), FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 255, 0), 2);
         for (Armor armor : armors) {
