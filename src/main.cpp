@@ -4,9 +4,12 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/video/video.hpp>
 #include <opencv2/opencv.hpp>
+
 #include <camera.hpp>
 #include <detector.hpp>
 #include <number_classifier.hpp>
+#include <serialport.hpp>
+#include <packet.hpp>
 
 #include <chrono>
 #include <yaml-cpp/yaml.h>
@@ -33,6 +36,15 @@ void detect()
 
     NumberClassifier nc("/home/ev3rm0re/workspace/Vision_CmakeGcc/models/mlp.onnx", "/home/ev3rm0re/workspace/Vision_CmakeGcc/models/label.txt", 0.6);
 
+    Serial s;
+    if (s.open("/dev/ttyUSB0", 115200, 8, Serial::PARITY_NONE, 1) != Serial::OK)
+    {
+        cerr << "Failed to open serial port" << endl;
+        return;
+    }
+    SendPacket send_packet;
+    ReceivePacket receive_packet;
+
     vector<vector<double>> datas;
 
     Mat frame;
@@ -44,11 +56,11 @@ void detect()
         Tensor output = det.get()->infer(frame);
         vector<vector<int>> results = det.get()->postprocess(output, 0.3, 0.5);
         vector<Armor> armors = armor_det.get()->detect(results, frame);
+        nc.extractNumbers(frame, armors);
+        nc.classify(armors);
         auto end = chrono::high_resolution_clock::now();
         double fps = 1e9 / chrono::duration_cast<chrono::nanoseconds>(end - start).count();
         putText(frame, "FPS: " + to_string(fps).substr(0, 5), Point(10, 30), FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 255, 0), 2);
-        nc.extractNumbers(frame, armors);
-        nc.classify(armors);
         for (Armor armor : armors) {
             datas.push_back(pnp_solver.solve(armor));
             armor.distance = datas.back()[2];
@@ -61,10 +73,15 @@ void detect()
         if (datas.size() > 0) {
             sort(datas.begin(), datas.end(), [](vector<double> a, vector<double> b) { return a[2] < b[2]; }); // 按距离从小到大排序
             datas.erase(datas.begin() + 1, datas.end()); // 只保留最近的目标
-
             // TODO: 通过串口发送数据
-            cout << "distance: " << datas[0][2] << "M" << endl;
-            cout << "yaw" << datas[0][0] << " pitch" << datas[0][1] << endl;
+            send_packet.yaw = datas[0][0];
+            send_packet.pitch = datas[0][1];
+            send_packet.distance = datas[0][2];
+            sendPacket(s, send_packet);
+            // TODO: 通过串口接收数据
+            receivePacket(s, receive_packet);
+            cout << "header: " << (int)receive_packet.header << " tail: " << (int)receive_packet.tail << endl;
+            cout << "Yaw: " << receive_packet.yaw << " Pitch: " << receive_packet.pitch << " Distance: " << receive_packet.distance << endl;
         }
 
         datas.clear();
