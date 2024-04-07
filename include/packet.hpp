@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <vector>
 
+#pragma pack(1)
 struct SendPacket
 {
     uint8_t header = 0x5A;
@@ -21,6 +22,7 @@ struct ReceivePacket
     float distance;
     uint8_t tail = 0x5B;
 };
+#pragma pack()
 
 void float2bytes(float f, uint8_t *byte)
 {

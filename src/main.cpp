@@ -126,6 +126,7 @@ void detect()
             send_packet.yaw = datas[0][0];
             send_packet.pitch = datas[0][1];
             send_packet.distance = datas[0][2];
+            cout << sizeof(SendPacket) << endl;
             sendPacket(s, send_packet);
             // TODO: 通过串口接收数据
             receivePacket(s, receive_packet);
