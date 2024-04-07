@@ -23,7 +23,7 @@ namespace auto_aim
     {
         // 初始化模型，创建推理请求
         model = core.read_model(xml_path, bin_path);
-        compiled_model = core.compile_model(model, "CPU");
+        compiled_model = core.compile_model(model, "GPU");
         infer_request = compiled_model.create_infer_request();
         scale = 0.0;
     }

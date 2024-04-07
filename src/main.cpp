@@ -24,8 +24,8 @@ using namespace auto_aim;
 void detect()
 {
     // YOLO目标检测器
-    string xml_path = "/home/ev3rm0re/workspace/Vision_CmakeGcc/models/03.16_yolov8n_e50_int8.xml";
-    string bin_path = "/home/ev3rm0re/workspace/Vision_CmakeGcc/models/03.16_yolov8n_e50_int8.bin";
+    string xml_path = "../models/03.16_yolov8n_e50_int8.xml";
+    string bin_path = "../models/03.16_yolov8n_e50_int8.bin";
     unique_ptr<YoloDet> det = make_unique<YoloDet>(xml_path, bin_path);
 
     // 装甲板检测器
@@ -34,7 +34,7 @@ void detect()
     // 实例化相机类
     HIK::Camera camera;
     // 根据相机内参和畸变参数实例化PnP解算器
-    YAML::Node config = YAML::LoadFile("/home/ev3rm0re/workspace/Vision_CmakeGcc/config/camera_matrix.yaml");
+    YAML::Node config = YAML::LoadFile("../config/camera_matrix.yaml");
     vector<float> camera_vector = config["Camera matrix"].as<vector<float>>();
     vector<float> distortion_coefficients_vector = config["Distortion coefficients"].as<vector<float>>();
     Mat camera_matrix = Mat(3, 3, CV_32F, camera_vector.data());
@@ -42,7 +42,7 @@ void detect()
     PnPSolver pnp_solver(camera_matrix, distortion_coefficients);
 
     // 数字分类器
-    NumberClassifier nc("/home/ev3rm0re/workspace/Vision_CmakeGcc/models/mlp.onnx", "/home/ev3rm0re/workspace/Vision_CmakeGcc/models/label.txt", 0.6);
+    NumberClassifier nc("../models/mlp.onnx", "../models/label.txt", 0.6);
 
     // 跟踪器
     Ptr<Tracker> tracker;
@@ -50,7 +50,7 @@ void detect()
 
     // 打开串口
     Serial s;
-    if (s.open("/dev/ttyUSB0", 115200, 8, Serial::PARITY_NONE, 1) != Serial::OK)
+    if (s.open("/dev/ttyACM0", 115200, 8, Serial::PARITY_NONE, 1) != Serial::OK)
     {
         cerr << "Failed to open serial port" << endl;
         return;
@@ -60,8 +60,8 @@ void detect()
     SendPacket send_packet;
     ReceivePacket receive_packet;
     std::map<std::string, uint8_t> id_unit8_map{
-    {"", 0},  {"outpost", 0}, {"1", 1}, {"1", 1},     {"2", 2},
-    {"3", 3}, {"4", 4},       {"5", 5}, {"guard", 6}, {"base", 7}};
+    {"negative", -1},  {"outpost", 0}, {"1", 1}, {"2", 2},
+    {"3", 3}, {"4", 4}, {"5", 5}, {"guard", 6}, {"base", 7}};
 
     // 用于存储目标的数据
     vector<vector<double>> datas;
@@ -127,11 +127,14 @@ void detect()
                 }
             }
             // TODO: 通过串口发送数据
-            send_packet.yaw = datas[0][0];
+            send_packet.yaw = -datas[0][0] * 10;
             send_packet.distance = datas[0][2];
             send_packet.tracking = tracker_initialized;
             send_packet.id = id_unit8_map.at(armors[0].number);
+            send_packet.armors_num = 4;
+            send_packet.reserved = 0;
             crc16::Append_CRC16_Check_Sum(reinterpret_cast<uint8_t *>(&send_packet), sizeof(SendPacket));
+            cout << "yaw: " << send_packet.yaw << " distance: " << send_packet.distance << " tracking: " << send_packet.tracking << " id: " << (int)send_packet.id << endl;
             sendPacket(s, send_packet);
             // TODO: 通过串口接收数据
             receivePacket(s, receive_packet);

@@ -134,6 +134,7 @@ namespace HIK
         if (MV_OK != nRet)
         {
             std::cerr << "MV_CC_GetImageBuffer fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
+            return;
         }
         CvtParam.pSrcData = stOutFrame.pBufAddr;
         CvtParam.nSrcDataLen = stOutFrame.stFrameInfo.nFrameLen;

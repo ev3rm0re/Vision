@@ -1,7 +1,9 @@
 #include "crc.hpp"
 
 #include <cstdint>
-
+#include <iostream>
+#include <iomanip>
+using namespace std;
 namespace crc16
 {
     /**
@@ -62,7 +64,7 @@ namespace crc16
 
         if ((pchMessage == nullptr) || (dwLength <= 2))
             return;
-
+        // 发送数据包
         w_crc = Get_CRC16_Check_Sum(reinterpret_cast<uint8_t *>(pchMessage), dwLength - 2);
 
         pchMessage[dwLength - 1] = (uint8_t)(w_crc & 0x00ff);
