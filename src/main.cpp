@@ -15,26 +15,45 @@
 
 #include <chrono>
 #include <yaml-cpp/yaml.h>
+#include <unistd.h>
 
 using namespace ov;
 using namespace cv;
 using namespace std;
 using namespace auto_aim;
 
-void detect()
+void detect(int argc, char **argv)
 {
     // YOLO目标检测器
-    string xml_path = "../models/03.16_yolov8n_e50_int8.xml";
-    string bin_path = "../models/03.16_yolov8n_e50_int8.bin";
+    if (argc < 7)
+    {
+        cerr << "Usage: " << argv[0] << " detect [yolo_xml_path] [yolo_bin_path] [camera_yaml] [number_classifier_onnx] [number_classifier_label_txt]" << endl;
+        return;
+    }
+    string xml_path = argv[2];
+    string bin_path = argv[3];
+    // string xml_path = "../models/03.16_yolov8n_e50_int8.xml";
+    // string bin_path = "../models/03.16_yolov8n_e50_int8.bin";
+    // 检查文件是否存在
+    while (access(xml_path.c_str(), F_OK) == -1 || access(bin_path.c_str(), F_OK) == -1)
+    {
+        cerr << "YOLO模型文件不存在，请检查文件路径" << endl;
+        sleep(1);
+    }
     unique_ptr<YoloDet> det = make_unique<YoloDet>(xml_path, bin_path);
-
     // 装甲板检测器
     unique_ptr<ArmorDet> armor_det = make_unique<ArmorDet>();
 
     // 实例化相机类
     HIK::Camera camera;
     // 根据相机内参和畸变参数实例化PnP解算器
-    YAML::Node config = YAML::LoadFile("../config/camera_matrix.yaml");
+    while (access(argv[4], F_OK) == -1)
+    {
+        cerr << "相机内参和畸变参数文件不存在，请检查文件路径" << endl;
+        sleep(1);
+    }
+    YAML::Node config = YAML::LoadFile(argv[4]);
+    // YAML::Node config = YAML::LoadFile("../config/camera_matrix.yaml");
     vector<float> camera_vector = config["Camera matrix"].as<vector<float>>();
     vector<float> distortion_coefficients_vector = config["Distortion coefficients"].as<vector<float>>();
     Mat camera_matrix = Mat(3, 3, CV_32F, camera_vector.data());
@@ -42,7 +61,13 @@ void detect()
     PnPSolver pnp_solver(camera_matrix, distortion_coefficients);
 
     // 数字分类器
-    NumberClassifier nc("../models/mlp.onnx", "../models/label.txt", 0.6);
+    while (access(argv[5], F_OK) == -1 || access(argv[6], F_OK) == -1)
+    {
+        cerr << "数字分类器模型文件不存在，请检查文件路径" << endl;
+        sleep(1);
+    }
+    NumberClassifier nc(argv[5], argv[6], 0.6);
+    // NumberClassifier nc("../models/mlp.onnx", "../models/label.txt", 0.6);
 
     // 跟踪器
     Ptr<Tracker> tracker;
@@ -50,10 +75,10 @@ void detect()
 
     // 打开串口
     Serial s;
-    if (s.open("/dev/ttyACM0", 115200, 8, Serial::PARITY_NONE, 1) != Serial::OK)
+    while (s.open("/dev/ttyACM0", 115200, 8, Serial::PARITY_NONE, 1) != Serial::OK)     // 循环尝试打开串口
     {
         cerr << "Failed to open serial port" << endl;
-        return;
+        sleep(1);
     }
 
     // 串口数据包
@@ -63,7 +88,7 @@ void detect()
     {"negative", -1},  {"outpost", 0}, {"1", 1}, {"2", 2},
     {"3", 3}, {"4", 4}, {"5", 5}, {"guard", 6}, {"base", 7}};
 
-    // 用于存储目标的数据
+    // 用于存储pnp解算后的数据
     vector<vector<double>> datas;
 
     // 用于存储图像帧
@@ -102,7 +127,7 @@ void detect()
         {
             sort(datas.begin(), datas.end(), [](vector<double> a, vector<double> b)
                  { return a[2] < b[2]; });               // 按距离从小到大排序
-            datas.erase(datas.begin() + 1, datas.end()); // 只保留最近的目标
+            datas.erase(datas.begin() + 1, datas.end()); // 只保留最近的目标 TODO: 可以手动切换目标
             if (!tracker_initialized)
             {
                 bbox = Rect(armors[0].left_light.top, armors[0].left_light.top + Point2f(20, 20));
@@ -127,7 +152,7 @@ void detect()
                 }
             }
             // TODO: 通过串口发送数据
-            send_packet.yaw = -datas[0][0] * 10;
+            send_packet.yaw = -datas[0][0];               // 相机坐标系与云台坐标系相反
             send_packet.distance = datas[0][2];
             send_packet.tracking = tracker_initialized;
             send_packet.id = id_unit8_map.at(armors[0].number);
@@ -246,7 +271,7 @@ int main(int argc, char **argv)
     }
     else if (mode == "detect")
     {
-        detect();
+        detect(argc, argv);
     }
     else
     {
