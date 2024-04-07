@@ -9,21 +9,24 @@
 #pragma pack(1)
 struct SendPacket
 {
-    uint8_t header = 0x5A;
+    uint8_t header = 0xA5;
+    bool tracking : 1;
+    uint8_t id : 3;
+    uint8_t armors_num : 3; // 2-balance 3-outpost 4-normal
+    uint8_t reserved : 1;
     float yaw;
-    float pitch;
     float distance;
-    uint8_t tail = 0x5B;
+    uint8_t end = 0x0D;
+    uint8_t newline = 0x0A;
     uint16_t crc_checksum = 0;
 };
 
 struct ReceivePacket
 {
     uint8_t header = 0x5A;
-    float yaw;
-    float pitch;
-    float distance;
-    uint8_t tail = 0x5B;
+    uint8_t detect_color : 1; // 0-red 1-blue
+    bool reset_tracker : 1;
+    uint8_t reserved : 6;
     uint16_t crc_checksum = 0;
 };
 #pragma pack()
@@ -40,28 +43,30 @@ float byte2float(const uint8_t *byte)
     return f;
 }
 
-void sendPacket(Serial& serial, const SendPacket& packet) {
+void sendPacket(Serial &serial, const SendPacket &packet)
+{
     uint8_t buffer[sizeof(SendPacket)];
     buffer[0] = packet.header;
+    buffer[1] = (packet.tracking << 7) | (packet.id << 4) | (packet.armors_num << 1) | packet.reserved;
     float2bytes(packet.yaw, buffer + 1);
-    float2bytes(packet.pitch, buffer + 5);
     float2bytes(packet.distance, buffer + 9);
-    buffer[sizeof(SendPacket) - 3] = packet.tail;
+    buffer[sizeof(SendPacket) - 4] = packet.end;
+    buffer[sizeof(SendPacket) - 3] = packet.newline;
     buffer[sizeof(SendPacket) - 2] = (packet.crc_checksum >> 8) & 0xff;
     buffer[sizeof(SendPacket) - 1] = packet.crc_checksum & 0xff;
     // 发送数据包
-    serial.write(reinterpret_cast<const char*>(buffer), sizeof(SendPacket));
+    serial.write(reinterpret_cast<const char *>(buffer), sizeof(SendPacket));
 }
 
-void receivePacket(Serial& serial, ReceivePacket& packet) {
+void receivePacket(Serial &serial, ReceivePacket &packet)
+{
     uint8_t buffer[sizeof(ReceivePacket)];
-    serial.read(reinterpret_cast<char*>(buffer), sizeof(ReceivePacket), 10);
-    
+    serial.read(reinterpret_cast<char *>(buffer), sizeof(ReceivePacket), 10);
+
     packet.header = buffer[0];
-    packet.yaw = byte2float(buffer + 1);
-    packet.pitch = byte2float(buffer + 5);
-    packet.distance = byte2float(buffer + 9);
-    packet.tail = buffer[sizeof(ReceivePacket) - 3];
+    packet.detect_color = buffer[1] >> 7;
+    packet.reset_tracker = (buffer[1] >> 6) & 0x01;
+    packet.reserved = buffer[1] & 0x3f;
     packet.crc_checksum = (0xffff & buffer[sizeof(ReceivePacket) - 1]) | (buffer[sizeof(ReceivePacket) - 2] << 8);
 }
 

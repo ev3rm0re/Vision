@@ -59,6 +59,9 @@ void detect()
     // 串口数据包
     SendPacket send_packet;
     ReceivePacket receive_packet;
+    std::map<std::string, uint8_t> id_unit8_map{
+    {"", 0},  {"outpost", 0}, {"1", 1}, {"1", 1},     {"2", 2},
+    {"3", 3}, {"4", 4},       {"5", 5}, {"guard", 6}, {"base", 7}};
 
     // 用于存储目标的数据
     vector<vector<double>> datas;
@@ -125,11 +128,11 @@ void detect()
             }
             // TODO: 通过串口发送数据
             send_packet.yaw = datas[0][0];
-            send_packet.pitch = datas[0][1];
             send_packet.distance = datas[0][2];
+            send_packet.tracking = tracker_initialized;
+            send_packet.id = id_unit8_map.at(armors[0].number);
             crc16::Append_CRC16_Check_Sum(reinterpret_cast<uint8_t *>(&send_packet), sizeof(SendPacket));
             sendPacket(s, send_packet);
-            cout << "send packet: 0x" << hex << (int)send_packet.header << " " << send_packet.yaw << " " << send_packet.pitch << " " << send_packet.distance << " 0x" << (int)send_packet.tail << " 0x" << send_packet.crc_checksum << endl;
             // TODO: 通过串口接收数据
             receivePacket(s, receive_packet);
         }

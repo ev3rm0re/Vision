@@ -71,7 +71,9 @@
         "cinttypes": "cpp",
         "typeindex": "cpp",
         "typeinfo": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "*.ipp": "cpp",
+        "*.txx": "cpp"
     },
     "cmake.debugConfig": {
         "args": [
