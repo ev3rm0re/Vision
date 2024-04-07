@@ -2,8 +2,8 @@
 相机类定义
 */
 
-#ifndef CAMERA_HPP
-#define CAMERA_HPP
+#ifndef _CAMERA_HPP_
+#define _CAMERA_HPP_
 
 #include <MvCameraControl.h>
 #include <opencv2/opencv.hpp>

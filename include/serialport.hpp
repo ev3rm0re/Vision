@@ -2,8 +2,8 @@
 串口通信主类
 */
 
-#ifndef SERIALPORT_HPP
-#define SERIALPORT_HPP
+#ifndef _SERIALPORT_HPP_
+#define _SERIALPORT_HPP_
 
 #include <stream.hpp>
 #include <pthread.h>

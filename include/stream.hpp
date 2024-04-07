@@ -1,5 +1,5 @@
-#ifndef STREAM_HPP
-#define STREAM_HPP
+#ifndef _STREAM_HPP_
+#define _STREAM_HPP_
 
 class Stream
 {

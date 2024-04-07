@@ -2,8 +2,8 @@
 装甲板检测到之后的数字分类器
 */
 
-#ifndef NUMBER_CLASSIFIER_HPP
-#define NUMBER_CLASSIFIER_HPP
+#ifndef _NUMBER_CLASSIFIER_HPP_
+#define _NUMBER_CLASSIFIER_HPP_
 
 // OpenCV
 #include <opencv2/opencv.hpp>

@@ -5,8 +5,8 @@ ArmorDet: 装甲板匹配检测
 PnPSolver: 通过PnP解算器求解装甲板的位置
 */
 
-#ifndef DETECTOR_HPP
-#define DETECTOR_HPP
+#ifndef _DETECTOR_HPP_
+#define _DETECTOR_HPP_
 
 #include <openvino/openvino.hpp>
 #include <opencv2/opencv.hpp>

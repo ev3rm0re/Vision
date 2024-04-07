@@ -25,7 +25,7 @@ link_libraries(
 
 # link_directories(/usr/lib)
 
-add_executable(Vision src/main.cpp src/camera.cpp src/detector.cpp src/number_classifier.cpp src/timestamp.cpp src/stream.cpp src/serialport.cpp)
+add_executable(Vision src/main.cpp src/camera.cpp src/detector.cpp src/number_classifier.cpp src/timestamp.cpp src/stream.cpp src/serialport.cpp src/crc.cpp)
 
 target_link_directories(Vision PUBLIC /opt/MVS/lib)
 

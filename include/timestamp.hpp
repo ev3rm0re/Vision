@@ -1,5 +1,5 @@
-#ifndef TIMESTAMP_HPP
-#define TIMESTAMP_HPP
+#ifndef _TIMESTAMP_HPP_
+#define _TIMESTAMP_HPP_
 
 typedef long long timestamp_t;
 

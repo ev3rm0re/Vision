@@ -11,6 +11,7 @@
 #include <number_classifier.hpp>
 #include <serialport.hpp>
 #include <packet.hpp>
+#include <crc.hpp>
 
 #include <chrono>
 #include <yaml-cpp/yaml.h>
@@ -126,12 +127,11 @@ void detect()
             send_packet.yaw = datas[0][0];
             send_packet.pitch = datas[0][1];
             send_packet.distance = datas[0][2];
-            cout << sizeof(SendPacket) << endl;
+            crc16::Append_CRC16_Check_Sum(reinterpret_cast<uint8_t *>(&send_packet), sizeof(SendPacket));
             sendPacket(s, send_packet);
+            cout << "send packet: 0x" << hex << (int)send_packet.header << " " << send_packet.yaw << " " << send_packet.pitch << " " << send_packet.distance << " 0x" << (int)send_packet.tail << " 0x" << send_packet.crc_checksum << endl;
             // TODO: 通过串口接收数据
             receivePacket(s, receive_packet);
-            cout << "header: " << (int)receive_packet.header << " tail: " << (int)receive_packet.tail << endl;
-            cout << "Yaw: " << receive_packet.yaw << " Pitch: " << receive_packet.pitch << " Distance: " << receive_packet.distance << endl;
         }
 
         datas.clear();
