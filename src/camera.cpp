@@ -3,6 +3,7 @@
 */
 
 #include "camera.hpp"
+#include <unistd.h>
 
 namespace HIK
 {
@@ -39,17 +40,21 @@ namespace HIK
             std::cerr << "MV_CC_EnumDevices fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
             return false;
         }
-        if (stDeviceList.nDeviceNum > 0)
-        {
-            for (unsigned int i = 0; i < stDeviceList.nDeviceNum; i++)
-            {
-                std::cout << "Device: " << i << std::endl;
-            }
-        }
-        else
+        while (!(stDeviceList.nDeviceNum > 0))
         {
             std::cerr << "No device found!" << std::endl;
-            return false;
+            sleep(1);
+            nRet = MV_CC_EnumDevices(MV_GIGE_DEVICE | MV_USB_DEVICE, &stDeviceList);
+            if (MV_OK != nRet)
+            {
+                std::cerr << "MV_CC_EnumDevices fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
+                return false;
+            }
+        }
+        for (unsigned int i = 0; i < stDeviceList.nDeviceNum; i++)
+        {
+            std::cout << "Device: " << i << std::endl;
+            std::cout << "Device Model Name: " << stDeviceList.pDeviceInfo[i]->SpecialInfo.stUsb3VInfo.chModelName << std::endl;
         }
 
         // 选择相机
