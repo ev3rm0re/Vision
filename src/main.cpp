@@ -152,7 +152,7 @@ void detect(int argc, char **argv)
                 }
             }
             // TODO: 通过串口发送数据
-            send_packet.yaw = -datas[0][0];               // 相机坐标系与云台坐标系相反
+            send_packet.yaw = -datas[0][0] * 10;               // 相机坐标系与云台坐标系相反
             send_packet.distance = datas[0][2];
             send_packet.tracking = tracker_initialized;
             send_packet.id = id_unit8_map.at(armors[0].number);
