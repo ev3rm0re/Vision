@@ -22,6 +22,7 @@ namespace HIK
     {
         if (isCameraOpened)
         {
+            MV_CC_StopGrabbing(handle);
             close();
         }
         if (handle != NULL)
@@ -133,13 +134,13 @@ namespace HIK
         return true;
     }
 
-    void Camera::cap(cv::Mat* srcimg)
+    bool Camera::cap(cv::Mat* srcimg)
     {
         nRet = MV_CC_GetImageBuffer(handle, &stOutFrame, 400);
         if (MV_OK != nRet)
         {
             std::cerr << "MV_CC_GetImageBuffer fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
-            return;
+            return false;
         }
         CvtParam.pSrcData = stOutFrame.pBufAddr;
         CvtParam.nSrcDataLen = stOutFrame.stFrameInfo.nFrameLen;
@@ -149,17 +150,18 @@ namespace HIK
         if (MV_OK != nRet)
         {
             std::cerr << "MV_CC_ConvertPixelType fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
+            return false;
         }
         *srcimg = cv::Mat(stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth, CV_8UC3, pDataForBGR);
         if (NULL != stOutFrame.pBufAddr)
         {
             MV_CC_FreeImageBuffer(handle, &stOutFrame);
         }
+        return true;
     }
 
     void Camera::close()
     {
-        MV_CC_StopGrabbing(handle);
         MV_CC_CloseDevice(handle);
     }
 }

@@ -104,10 +104,20 @@ void detect(int argc, char **argv)
     bool tracker_initialized = false;
     int id = 0;
 
-    while (isopened)
+    while (1)
     {
         auto start = chrono::high_resolution_clock::now();
-        camera.cap(&frame);
+        if (camera.cap(&frame) != true)
+        {
+            camera.close();
+            cerr << "Failed to capture frame" << endl;
+            cerr << "reopening camera" << endl;
+            while (!camera.open())
+            {
+                cerr << "Failed to reopen camera" << endl;
+                sleep(1);
+            }
+        }
         Tensor output = det.get()->infer(frame);
         vector<vector<int>> results = det.get()->postprocess(output, 0.3, 0.5);
         vector<Armor> armors = armor_det.get()->detect(results, frame);
@@ -168,7 +178,7 @@ void detect(int argc, char **argv)
             // cout << "yaw: " << send_packet.yaw << " distance: " << send_packet.distance << " tracking: " << send_packet.tracking << " id: " << (int)send_packet.id << endl;
             while (sendPacket(s, send_packet) != sizeof(SendPacket))
             {
-                cerr << "Failed to send packet" << endl;
+                cerr << "Failed to send packet, reopening serial port..." << endl;
                 // 重开串口
                 s.close();
                 if (s.open("/dev/ttyUSB0", 115200, 8, Serial::PARITY_NONE, 1) != Serial::OK)     // 循环尝试打开串口

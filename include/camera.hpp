@@ -17,7 +17,7 @@ namespace HIK
             ~Camera();
             bool open();
             void close();
-            void cap(cv::Mat* srcimg);
+            bool cap(cv::Mat* srcimg);
         private:
             int nRet;
             bool isCameraOpened;
