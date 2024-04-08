@@ -152,14 +152,15 @@ void detect(int argc, char **argv)
                 }
             }
             // TODO: 通过串口发送数据
-            send_packet.yaw = -datas[0][0];               // 相机坐标系与云台坐标系相反
+            send_packet.yaw = datas[0][0];              // 相机坐标系与云台坐标系相反
+            send_packet.pitch = datas[0][1];
             send_packet.distance = datas[0][2];
             send_packet.tracking = tracker_initialized;
             send_packet.id = id_unit8_map.at(armors[0].number);
             send_packet.armors_num = 4;
             send_packet.reserved = 0;
             crc16::Append_CRC16_Check_Sum(reinterpret_cast<uint8_t *>(&send_packet), sizeof(SendPacket));
-            cout << "yaw: " << send_packet.yaw << " distance: " << send_packet.distance << " tracking: " << send_packet.tracking << " id: " << (int)send_packet.id << endl;
+            // cout << "yaw: " << send_packet.yaw << " distance: " << send_packet.distance << " tracking: " << send_packet.tracking << " id: " << (int)send_packet.id << endl;
             sendPacket(s, send_packet);
             // TODO: 通过串口接收数据
             receivePacket(s, receive_packet);

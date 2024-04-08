@@ -15,6 +15,7 @@ struct SendPacket
     uint8_t armors_num : 3; // 2-balance 3-outpost 4-normal
     uint8_t reserved : 1;
     float yaw;
+    float pitch;
     float distance;
     uint8_t end = 0x0D;
     uint8_t newline = 0x0A;
@@ -49,7 +50,8 @@ void sendPacket(Serial &serial, const SendPacket &packet)
     buffer[0] = packet.header;
     buffer[1] = packet.tracking | (packet.id << 1) | (packet.armors_num << 4) | (packet.reserved << 7);
     float2bytes(packet.yaw, buffer + 2);
-    float2bytes(packet.distance, buffer + 6);
+    float2bytes(packet.pitch, buffer + 6);
+    float2bytes(packet.distance, buffer + 10);
     buffer[sizeof(SendPacket) - 4] = packet.end;
     buffer[sizeof(SendPacket) - 3] = packet.newline;
     buffer[sizeof(SendPacket) - 2] = packet.crc_checksum & 0xff;
