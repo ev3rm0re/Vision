@@ -57,20 +57,20 @@ void sendPacket(Serial &serial, const SendPacket &packet)
     buffer[sizeof(SendPacket) - 2] = packet.crc_checksum & 0xff;
     buffer[sizeof(SendPacket) - 1] = (packet.crc_checksum >> 8) & 0xff;
     // Debug用
-    // cout << hex << setw(2) << setfill('0') << (int)buffer[0] << " "
-    //             << setw(2) << setfill('0') << (int)buffer[1] << " "
-    //             << setw(2) << setfill('0') << (int)buffer[2] << " "
-    //             << setw(2) << setfill('0') << (int)buffer[3] << " "
-    //             << setw(2) << setfill('0') << (int)buffer[4] << " "
-    //             << setw(2) << setfill('0') << (int)buffer[5] << " "
-    //             << setw(2) << setfill('0') << (int)buffer[6] << " "
-    //             << setw(2) << setfill('0') << (int)buffer[7] << " "
-    //             << setw(2) << setfill('0') << (int)buffer[8] << " "
-    //             << setw(2) << setfill('0') << (int)buffer[9] << " "
-    //             << setw(2) << setfill('0') << (int)buffer[10] << " "
-    //             << setw(2) << setfill('0') << (int)buffer[11] << " "
-    //             << setw(2) << setfill('0') << (int)buffer[12] << " "
-    //             << setw(2) << setfill('0') << (int)buffer[13] << " ->buffer" << endl;
+    cout << hex << setw(2) << setfill('0') << (int)buffer[0] << " "
+                << setw(2) << setfill('0') << (int)buffer[1] << " "
+                << setw(2) << setfill('0') << (int)buffer[2] << " "
+                << setw(2) << setfill('0') << (int)buffer[3] << " "
+                << setw(2) << setfill('0') << (int)buffer[4] << " "
+                << setw(2) << setfill('0') << (int)buffer[5] << " "
+                << setw(2) << setfill('0') << (int)buffer[6] << " "
+                << setw(2) << setfill('0') << (int)buffer[7] << " "
+                << setw(2) << setfill('0') << (int)buffer[8] << " "
+                << setw(2) << setfill('0') << (int)buffer[9] << " "
+                << setw(2) << setfill('0') << (int)buffer[10] << " "
+                << setw(2) << setfill('0') << (int)buffer[11] << " "
+                << setw(2) << setfill('0') << (int)buffer[12] << " "
+                << setw(2) << setfill('0') << (int)buffer[13] << " ->buffer" << endl;
     // 发送数据包
     serial.write(reinterpret_cast<const char *>(buffer), sizeof(SendPacket));
 }
