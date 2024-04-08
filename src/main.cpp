@@ -75,7 +75,7 @@ void detect(int argc, char **argv)
 
     // 打开串口
     Serial s;
-    while (s.open("/dev/ttyUSB0", 115200, 8, Serial::PARITY_NONE, 1) != Serial::OK)     // 循环尝试打开串口
+    while (s.open("/dev/ttyACM0", 115200, 8, Serial::PARITY_NONE, 1) != Serial::OK)     // 循环尝试打开串口
     {
         cerr << "Failed to open serial port" << endl;
         sleep(1);
