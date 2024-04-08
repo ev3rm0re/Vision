@@ -176,7 +176,7 @@ void detect(int argc, char **argv)
             send_packet.reserved = 0;
             crc16::Append_CRC16_Check_Sum(reinterpret_cast<uint8_t *>(&send_packet), sizeof(SendPacket));
             // cout << "yaw: " << send_packet.yaw << " distance: " << send_packet.distance << " tracking: " << send_packet.tracking << " id: " << (int)send_packet.id << endl;
-            while (sendPacket(s, send_packet) != sizeof(SendPacket))
+            if (sendPacket(s, send_packet) != sizeof(SendPacket))
             {
                 cerr << "Failed to send packet, reopening serial port..." << endl;
                 // 重开串口
@@ -185,7 +185,6 @@ void detect(int argc, char **argv)
                 {
                     cerr << "Failed to reopen serial port" << endl;
                 }
-                sleep(1);
             }
             // TODO: 通过串口接收数据
             receivePacket(s, receive_packet);

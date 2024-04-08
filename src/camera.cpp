@@ -43,7 +43,7 @@ namespace HIK
         }
         while (!(stDeviceList.nDeviceNum > 0))
         {
-            std::cerr << "No device found!" << std::endl;
+            std::cerr << "No camera found!" << std::endl;
             sleep(1);
             nRet = MV_CC_EnumDevices(MV_GIGE_DEVICE | MV_USB_DEVICE, &stDeviceList);
             if (MV_OK != nRet)
