@@ -44,7 +44,7 @@ float byte2float(const uint8_t *byte)
     return f;
 }
 
-void sendPacket(Serial &serial, const SendPacket &packet)
+int sendPacket(Serial &serial, const SendPacket &packet)
 {
     uint8_t buffer[sizeof(SendPacket)];
     buffer[0] = packet.header;
@@ -70,9 +70,13 @@ void sendPacket(Serial &serial, const SendPacket &packet)
                 << setw(2) << setfill('0') << (int)buffer[10] << " "
                 << setw(2) << setfill('0') << (int)buffer[11] << " "
                 << setw(2) << setfill('0') << (int)buffer[12] << " "
-                << setw(2) << setfill('0') << (int)buffer[13] << " ->buffer" << endl;
+                << setw(2) << setfill('0') << (int)buffer[13] << " "
+                << setw(2) << setfill('0') << (int)buffer[14] << " "
+                << setw(2) << setfill('0') << (int)buffer[15] << " "
+                << setw(2) << setfill('0') << (int)buffer[16] << " "
+                << setw(2) << setfill('0') << (int)buffer[17] << " " << endl;
     // 发送数据包
-    serial.write(reinterpret_cast<const char *>(buffer), sizeof(SendPacket));
+    return serial.write(reinterpret_cast<const char *>(buffer), sizeof(SendPacket));
 }
 
 void receivePacket(Serial &serial, ReceivePacket &packet)

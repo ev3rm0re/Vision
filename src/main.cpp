@@ -24,6 +24,9 @@ using namespace auto_aim;
 
 void detect(int argc, char **argv)
 {
+    // 全局变量，检测的颜色
+    string detect_color = "blue";
+
     // YOLO目标检测器
     if (argc < 7)
     {
@@ -75,7 +78,7 @@ void detect(int argc, char **argv)
 
     // 打开串口
     Serial s;
-    while (s.open("/dev/ttyACM0", 115200, 8, Serial::PARITY_NONE, 1) != Serial::OK)     // 循环尝试打开串口
+    while (s.open("/dev/ttyUSB0", 115200, 8, Serial::PARITY_NONE, 1) != Serial::OK)     // 循环尝试打开串口
     {
         cerr << "Failed to open serial port" << endl;
         sleep(1);
@@ -115,6 +118,8 @@ void detect(int argc, char **argv)
         putText(frame, "FPS: " + to_string(fps).substr(0, 5), Point(10, 30), FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 255, 0), 2);
         for (Armor armor : armors)
         {
+            if (armor.color != detect_color)
+                continue;
             datas.push_back(pnp_solver.solve(armor));
             armor.distance = datas.back()[2];
             line(frame, armor.left_light.top, armor.right_light.bottom, Scalar(0, 255, 0), 2);
@@ -151,7 +156,7 @@ void detect(int argc, char **argv)
                     tracker_initialized = false;
                 }
             }
-            // TODO: 通过串口发送数据
+            // 通过串口发送数据
             send_packet.yaw = datas[0][0];              // 相机坐标系与云台坐标系相反
             send_packet.pitch = datas[0][1];
             send_packet.distance = datas[0][2];
@@ -161,10 +166,19 @@ void detect(int argc, char **argv)
             send_packet.reserved = 0;
             crc16::Append_CRC16_Check_Sum(reinterpret_cast<uint8_t *>(&send_packet), sizeof(SendPacket));
             // cout << "yaw: " << send_packet.yaw << " distance: " << send_packet.distance << " tracking: " << send_packet.tracking << " id: " << (int)send_packet.id << endl;
-            sendPacket(s, send_packet);
+            while (sendPacket(s, send_packet) != sizeof(SendPacket))
+            {
+                cerr << "Failed to send packet" << endl;
+                // 重开串口
+                s.close();
+                if (s.open("/dev/ttyUSB0", 115200, 8, Serial::PARITY_NONE, 1) != Serial::OK)     // 循环尝试打开串口
+                {
+                    cerr << "Failed to reopen serial port" << endl;
+                }
+                sleep(1);
+            }
             // TODO: 通过串口接收数据
             receivePacket(s, receive_packet);
-            cout << sizeof(receive_packet) << endl;
         }
 
         datas.clear();

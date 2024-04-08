@@ -210,6 +210,7 @@ namespace auto_aim
                 {
                     Armor armor(lights[i], lights[j]);
                     armor.classfication_result = class_names[result[4]];
+                    armor.color = class_names[result[4]];
                     armor.yolo_confidence = result[5];
                     armors.push_back(armor);
                 }
