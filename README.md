@@ -47,7 +47,7 @@ namespace里三个类的实现：
 
 装甲板的数字分类器: 上一个中的ArmorDet类实现了装甲板数据获取，就得到了它的位置数据，根据这个数据再在原画面提取roi，把它传入分类器，就跟数字识别差不多，多层感知分类。
 
-## 5. serialport.cpp、stream.cpp、timestamp.cpp
+#### 5. serialport.cpp、stream.cpp、timestamp.cpp
 
 串口通讯的类及其附属，全是抄的，有些看不懂，不解释了
 
