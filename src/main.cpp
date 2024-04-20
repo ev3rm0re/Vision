@@ -27,7 +27,6 @@ void detect(int argc, char **argv)
     // 全局变量，检测的颜色
     string detect_color = "blue";
 
-    // YOLO目标检测器
     if (argc < 7)
     {
         cerr << "Usage: " << argv[0] << " detect [yolo_xml_path] [yolo_bin_path] [camera_yaml] [number_classifier_onnx] [number_classifier_label_txt]" << endl;
@@ -43,6 +42,7 @@ void detect(int argc, char **argv)
         cerr << "YOLO模型文件不存在，请检查文件路径" << endl;
         sleep(1);
     }
+    // YOLO目标检测器
     unique_ptr<YoloDet> det = make_unique<YoloDet>(xml_path, bin_path);
     // 装甲板检测器
     unique_ptr<ArmorDet> armor_det = make_unique<ArmorDet>();
