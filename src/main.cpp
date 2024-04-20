@@ -224,6 +224,8 @@ void detect(int argc, char **argv)
             break;
         }
     }
+    camera.close();
+    cv::destroyAllWindows();
 }
 
 void calibrate()
