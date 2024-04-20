@@ -104,6 +104,24 @@ void detect(int argc, char **argv)
     bool tracker_initialized = false;
     int id = 0;
 
+    // 实例化一个卡尔曼滤波来预测下一帧的位置
+    cv::KalmanFilter KF(6, 2, 0);
+
+    // 初始化卡尔曼滤波器的状态转移矩阵
+    KF.transitionMatrix = (Mat_<float>(6, 6) << 1, 0, 1, 0, 0.1, 0,
+                                                0, 1, 0, 1, 0, 0.1,
+                                                0, 0, 1, 0, 1, 0,
+                                                0, 0, 0, 1, 0, 1,
+                                                0, 0, 0, 0, 1, 0,
+                                                0, 0, 0, 0, 0, 1);
+    // 初始化状态估计和协方差矩阵
+    Mat state(6, 1, CV_32F);    // (x, y, vx, vy, ax, ay)
+    Mat processNoise(6, 1, CV_32F);
+    setIdentity(KF.measurementMatrix);
+    setIdentity(KF.processNoiseCov, Scalar::all(1e-4));
+    setIdentity(KF.measurementNoiseCov, Scalar::all(1e-1));
+    setIdentity(KF.errorCovPost, Scalar::all(1));
+
     while (1)
     {
         auto start = chrono::high_resolution_clock::now();
@@ -131,7 +149,7 @@ void detect(int argc, char **argv)
             if (armor.color != detect_color)
                 continue;
             datas.push_back(pnp_solver.solve(armor));
-            armor.distance = datas.back()[2];
+            armor.distance = datas.back()[4];
             line(frame, armor.left_light.top, armor.right_light.bottom, Scalar(0, 255, 0), 2);
             line(frame, armor.left_light.bottom, armor.right_light.top, Scalar(0, 255, 0), 2);
             putText(frame, armor.classfication_result, armor.right_light.top + Point2f(5, -20), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 2);
@@ -143,6 +161,15 @@ void detect(int argc, char **argv)
             sort(datas.begin(), datas.end(), [](vector<double> a, vector<double> b)
                  { return a[2] < b[2]; });               // 按距离从小到大排序
             datas.erase(datas.begin() + 1, datas.end()); // 只保留最近的目标 TODO: 可以手动切换目标
+
+            // 用卡尔曼滤波预测下一帧的位置
+            Point2f observation(datas[0][0], datas[0][1]);
+            Mat prediction = KF.predict();
+            KF.correct((Mat_<float>(2, 1) << observation.x, observation.y));
+            Point2f predict_pt(prediction.at<float>(0), prediction.at<float>(1));
+            circle(frame, predict_pt, 8, Scalar(255, 0, 0), -1);
+            circle(frame, observation, 10, Scalar(0, 0, 255), 2);
+
             if (!tracker_initialized)
             {
                 bbox = Rect(armors[0].left_light.top, armors[0].left_light.top + Point2f(20, 20));
@@ -167,9 +194,9 @@ void detect(int argc, char **argv)
                 }
             }
             // 通过串口发送数据
-            send_packet.yaw = datas[0][0];              // 相机坐标系与云台坐标系相反
-            send_packet.pitch = datas[0][1];
-            send_packet.distance = datas[0][2];
+            send_packet.yaw = datas[0][2];              // 相机坐标系与云台坐标系相反
+            send_packet.pitch = datas[0][3];
+            send_packet.distance = datas[0][4];
             send_packet.tracking = tracker_initialized;
             send_packet.id = id_unit8_map.at(armors[0].number);
             send_packet.armors_num = 4;
@@ -191,7 +218,7 @@ void detect(int argc, char **argv)
         }
 
         datas.clear();
-        imshow("frame", frame);
+        cv::imshow("frame", frame);
         if (waitKey(1) == 27)
         {
             break;
@@ -245,7 +272,7 @@ void calibrate()
             drawChessboardCorners(frame, boardSize, Mat(corners), found);
         }
 
-        imshow("Calibration", frame);
+        cv::imshow("Calibration", frame);
 
         // 等待按键，按下ESC键退出标定
         char key = waitKey(1000);
@@ -272,12 +299,12 @@ void calibrate()
     // 相机标定
     Mat cameraMatrix, distCoeffs;
     vector<Mat> rvecs, tvecs;
-    calibrateCamera(objectPoints, imagePoints, frame.size(), cameraMatrix, distCoeffs, rvecs, tvecs);
+    cv::calibrateCamera(objectPoints, imagePoints, frame.size(), cameraMatrix, distCoeffs, rvecs, tvecs);
 
     // 输出相机内参和畸变参数
-    cout << "Camera matrix:" << endl
+    std::cout << "Camera matrix:" << endl
          << cameraMatrix << endl;
-    cout << "Distortion coefficients:" << endl
+    std::cout << "Distortion coefficients:" << endl
          << distCoeffs << endl;
     return;
 }
@@ -286,7 +313,7 @@ int main(int argc, char **argv)
 {
     if (argc < 2)
     {
-        cout << "Usage: " << argv[0] << " [calibrate|detect]" << endl;
+        std::cout << "Usage: " << argv[0] << " [calibrate|detect]" << endl;
         return 1;
     }
     string mode = argv[1];
@@ -300,7 +327,7 @@ int main(int argc, char **argv)
     }
     else
     {
-        cout << "Usage: " << argv[0] << " [calibrate|detect]" << endl;
+        std::cout << "Usage: " << argv[0] << " [calibrate|detect]" << endl;
         return 1;
     }
     return 0;

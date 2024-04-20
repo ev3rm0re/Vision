@@ -267,7 +267,7 @@ namespace auto_aim
         double yaw = atan2(tvec.at<double>(0), tvec.at<double>(2));
         double pitch = atan2(tvec.at<double>(1), tvec.at<double>(2));
         // cout << "yaw: " << yaw << " pitch: " << pitch << endl;
-        vector<double> data = {yaw, pitch, distance};
+        vector<double> data = {armor.center.x, armor.center.y, yaw, pitch, distance};
         return data;
     }
 }
