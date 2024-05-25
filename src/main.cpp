@@ -17,8 +17,6 @@
 #include <yaml-cpp/yaml.h>
 #include <unistd.h>
 
-using namespace ov;
-using namespace cv;
 using namespace std;
 using namespace auto_aim;
 
@@ -59,8 +57,8 @@ void detect(int argc, char **argv)
     // YAML::Node config = YAML::LoadFile("../config/camera_matrix.yaml");
     vector<float> camera_vector = config["Camera matrix"].as<vector<float>>();
     vector<float> distortion_coefficients_vector = config["Distortion coefficients"].as<vector<float>>();
-    Mat camera_matrix = Mat(3, 3, CV_32F, camera_vector.data());
-    Mat distortion_coefficients = Mat(1, 5, CV_32F, distortion_coefficients_vector.data());
+    cv::Mat camera_matrix = cv::Mat(3, 3, CV_32F, camera_vector.data());
+    cv::Mat distortion_coefficients = cv::Mat(1, 5, CV_32F, distortion_coefficients_vector.data());
     PnPSolver pnp_solver(camera_matrix, distortion_coefficients);
 
     // 数字分类器
@@ -73,8 +71,8 @@ void detect(int argc, char **argv)
     // NumberClassifier nc("../models/mlp.onnx", "../models/label.txt", 0.6);
 
     // 跟踪器
-    Ptr<Tracker> tracker;
-    Rect bbox;
+    cv::Ptr<cv::Tracker> tracker;
+    cv::Rect bbox;
 
     // 打开串口
     Serial s;
@@ -95,7 +93,7 @@ void detect(int argc, char **argv)
     vector<vector<double>> datas;
 
     // 用于存储图像帧
-    Mat frame;
+    cv::Mat frame;
 
     // 打开摄像头
     bool isopened = camera.open();
@@ -108,19 +106,19 @@ void detect(int argc, char **argv)
     cv::KalmanFilter KF(6, 2, 0);
 
     // 初始化卡尔曼滤波器的状态转移矩阵
-    KF.transitionMatrix = (Mat_<float>(6, 6) << 1, 0, 1, 0, 0.1, 0,
-                                                0, 1, 0, 1, 0, 0.1,
-                                                0, 0, 1, 0, 1, 0,
-                                                0, 0, 0, 1, 0, 1,
-                                                0, 0, 0, 0, 1, 0,
-                                                0, 0, 0, 0, 0, 1);
+    KF.transitionMatrix = (cv::Mat_<float>(6, 6) << 1, 0, 1, 0, 0.1, 0,
+                                                    0, 1, 0, 1, 0, 0.1,
+                                                    0, 0, 1, 0, 1, 0,
+                                                    0, 0, 0, 1, 0, 1,
+                                                    0, 0, 0, 0, 1, 0,
+                                                    0, 0, 0, 0, 0, 1);
     // 初始化状态估计和协方差矩阵
-    Mat state(6, 1, CV_32F);    // (x, y, vx, vy, ax, ay)
-    Mat processNoise(6, 1, CV_32F);
-    setIdentity(KF.measurementMatrix);
-    setIdentity(KF.processNoiseCov, Scalar::all(1e-4));
-    setIdentity(KF.measurementNoiseCov, Scalar::all(1e-1));
-    setIdentity(KF.errorCovPost, Scalar::all(1));
+    cv::Mat state(6, 1, CV_32F);    // (x, y, vx, vy, ax, ay)
+    cv::Mat processNoise(6, 1, CV_32F);
+    cv::setIdentity(KF.measurementMatrix);
+    cv::setIdentity(KF.processNoiseCov, cv::Scalar::all(1e-4));
+    cv::setIdentity(KF.measurementNoiseCov, cv::Scalar::all(1e-1));
+    cv::setIdentity(KF.errorCovPost, cv::Scalar::all(1));
 
     while (1)
     {
@@ -136,25 +134,25 @@ void detect(int argc, char **argv)
                 sleep(1);
             }
         }
-        Tensor output = det.get()->infer(frame);
+        ov::Tensor output = det.get()->infer(frame);
         vector<vector<int>> results = det.get()->postprocess(output, 0.3, 0.5);
         vector<Armor> armors = armor_det.get()->detect(results, frame);
         nc.extractNumbers(frame, armors);
         nc.classify(armors);
         auto end = chrono::high_resolution_clock::now();
         double fps = 1e9 / chrono::duration_cast<chrono::nanoseconds>(end - start).count();
-        putText(frame, "FPS: " + to_string(fps).substr(0, 5), Point(10, 30), FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 255, 0), 2);
+        putText(frame, "FPS: " + to_string(fps).substr(0, 5), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
         for (Armor armor : armors)
         {
             if (armor.color != detect_color)
                 continue;
             datas.push_back(pnp_solver.solve(armor));
             armor.distance = datas.back()[4];
-            line(frame, armor.left_light.top, armor.right_light.bottom, Scalar(0, 255, 0), 2);
-            line(frame, armor.left_light.bottom, armor.right_light.top, Scalar(0, 255, 0), 2);
-            putText(frame, armor.classfication_result, armor.right_light.top + Point2f(5, -20), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 2);
-            putText(frame, "yolo conf: " + to_string(armor.yolo_confidence).substr(0, 2), armor.right_light.center + Point2f(5, 0), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 2);
-            putText(frame, "distance: " + to_string(armor.distance).substr(0, 4) + "M", armor.right_light.bottom + Point2f(5, 20), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 2);
+            line(frame, armor.left_light.top, armor.right_light.bottom, cv::Scalar(0, 255, 0), 2);
+            line(frame, armor.left_light.bottom, armor.right_light.top, cv::Scalar(0, 255, 0), 2);
+            putText(frame, armor.classfication_result, armor.right_light.top + cv::Point2f(5, -20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
+            putText(frame, "yolo conf: " + to_string(armor.yolo_confidence).substr(0, 2), armor.right_light.center + cv::Point2f(5, 0), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
+            putText(frame, "distance: " + to_string(armor.distance).substr(0, 4) + "M", armor.right_light.bottom + cv::Point2f(5, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
         }
         if (datas.size() > 0)
         {
@@ -163,17 +161,17 @@ void detect(int argc, char **argv)
             datas.erase(datas.begin() + 1, datas.end()); // 只保留最近的目标 TODO: 可以手动切换目标
 
             // 用卡尔曼滤波预测下一帧的位置
-            Point2f observation(datas[0][0], datas[0][1]);
-            Mat prediction = KF.predict();
-            KF.correct((Mat_<float>(2, 1) << observation.x, observation.y));
-            Point2f predict_pt(prediction.at<float>(0), prediction.at<float>(1));
-            circle(frame, predict_pt, 8, Scalar(255, 0, 0), -1);
-            circle(frame, observation, 10, Scalar(0, 0, 255), 2);
+            cv::Point2f observation(datas[0][0], datas[0][1]);
+            cv::Mat prediction = KF.predict();
+            KF.correct((cv::Mat_<float>(2, 1) << observation.x, observation.y));
+            cv::Point2f predict_pt(prediction.at<float>(0), prediction.at<float>(1));
+            circle(frame, predict_pt, 8, cv::Scalar(255, 0, 0), -1);
+            circle(frame, observation, 10, cv::Scalar(0, 0, 255), 2);
 
             if (!tracker_initialized)
             {
-                bbox = Rect(armors[0].left_light.top, armors[0].left_light.top + Point2f(20, 20));
-                tracker = TrackerCSRT::create();
+                bbox = cv::Rect(armors[0].left_light.top, armors[0].left_light.top + cv::Point2f(20, 20));
+                tracker = cv::TrackerCSRT::create();
                 id++;
                 tracker->init(frame, bbox);
                 tracker_initialized = true;
@@ -185,7 +183,7 @@ void detect(int argc, char **argv)
                 if (tracking)
                 {
                     // rectangle(frame, bbox, Scalar(0, 255, 0), 2);
-                    putText(frame, "ID: " + to_string(id), armors[0].center + Point2f(0, -40), FONT_HERSHEY_SIMPLEX, 0.5, Scalar(0, 255, 0), 2);
+                    putText(frame, "ID: " + to_string(id), armors[0].center + cv::Point2f(0, -40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
                 }
                 else
                 {
@@ -219,7 +217,7 @@ void detect(int argc, char **argv)
 
         datas.clear();
         cv::imshow("frame", frame);
-        if (waitKey(1) == 27)
+        if (cv::waitKey(1) == 27)
         {
             break;
         }
@@ -231,19 +229,19 @@ void detect(int argc, char **argv)
 void calibrate()
 {
     // 设置棋盘格的尺寸（内角点数）
-    Size boardSize(8, 6); // 在此示例中，我们使用8x6的棋盘格
+    cv::Size boardSize(8, 6); // 在此示例中，我们使用8x6的棋盘格
 
     // 准备存储角点坐标的向量
-    vector<vector<Point3f>> objectPoints; // 世界坐标系中的3D点
-    vector<vector<Point2f>> imagePoints;  // 图像平面中的2D点
+    vector<vector<cv::Point3f>> objectPoints; // 世界坐标系中的3D点
+    vector<vector<cv::Point2f>> imagePoints;  // 图像平面中的2D点
 
     // 准备棋盘格角点的3D坐标
-    vector<Point3f> obj;
+    vector<cv::Point3f> obj;
     for (int i = 0; i < boardSize.height; i++)
     {
         for (int j = 0; j < boardSize.width; j++)
         {
-            obj.push_back(Point3f(j, i, 0));
+            obj.push_back(cv::Point3f(j, i, 0));
         }
     }
 
@@ -251,8 +249,8 @@ void calibrate()
     HIK::Camera camera;
     camera.open();
 
-    Mat frame;
-    vector<Point2f> corners;
+    cv::Mat frame;
+    vector<cv::Point2f> corners;
     bool calibrationDone = false;
 
     while (!calibrationDone)
@@ -263,21 +261,21 @@ void calibrate()
         bool found = findChessboardCorners(frame, boardSize, corners);
         if (found)
         {
-            Mat gray;
-            cvtColor(frame, gray, COLOR_BGR2GRAY);
-            cornerSubPix(gray, corners, Size(11, 11), Size(-1, -1),
-                         TermCriteria(TermCriteria::EPS | TermCriteria::MAX_ITER, 30, 0.1));
+            cv::Mat gray;
+            cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
+            cornerSubPix(gray, corners, cv::Size(11, 11), cv::Size(-1, -1),
+                         cv::TermCriteria(cv::TermCriteria::EPS | cv::TermCriteria::MAX_ITER, 30, 0.1));
             imagePoints.push_back(corners);
             objectPoints.push_back(obj);
 
             // 显示角点
-            drawChessboardCorners(frame, boardSize, Mat(corners), found);
+            drawChessboardCorners(frame, boardSize, cv::Mat(corners), found);
         }
 
         cv::imshow("Calibration", frame);
 
         // 等待按键，按下ESC键退出标定
-        char key = waitKey(1000);
+        char key = cv::waitKey(1000);
         if (key == 27)
         {
             break;
@@ -299,8 +297,8 @@ void calibrate()
     }
 
     // 相机标定
-    Mat cameraMatrix, distCoeffs;
-    vector<Mat> rvecs, tvecs;
+    cv::Mat cameraMatrix, distCoeffs;
+    vector<cv::Mat> rvecs, tvecs;
     cv::calibrateCamera(objectPoints, imagePoints, frame.size(), cameraMatrix, distCoeffs, rvecs, tvecs);
 
     // 输出相机内参和畸变参数

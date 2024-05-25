@@ -13,8 +13,6 @@
 #include <time.h>
 
 using namespace std;
-using namespace cv;
-using namespace ov;
 
 namespace auto_aim
 {
@@ -28,48 +26,48 @@ namespace auto_aim
         scale = 0.0;
     }
 
-    Mat YoloDet::letterbox(const Mat &source)
+    cv::Mat YoloDet::letterbox(const cv::Mat &source)
     {
         // 将图像填充为正方形
         int col = source.cols;
         int row = source.rows;
         int _max = MAX(col, row);
-        Mat result = Mat::zeros(_max, _max, CV_8UC3);
-        source.copyTo(result(Rect(0, 0, col, row)));
+        cv::Mat result = cv::Mat::zeros(_max, _max, CV_8UC3);
+        source.copyTo(result(cv::Rect(0, 0, col, row)));
         return result;
     }
 
-    Tensor YoloDet::infer(const Mat &image)
+    ov::Tensor YoloDet::infer(const cv::Mat &image)
     {
         // 推理
 
-        Mat letterbox_image = YoloDet::letterbox(image);
+        cv::Mat letterbox_image = YoloDet::letterbox(image);
         scale = letterbox_image.size[0] / 640.0;
-        Mat blob = dnn::blobFromImage(letterbox_image, 1.0 / 255.0, Size(640, 640), Scalar(), true);
+        cv::Mat blob = cv::dnn::blobFromImage(letterbox_image, 1.0 / 255.0, cv::Size(640, 640), cv::Scalar(), true);
         auto &input_port = compiled_model.input();
-        Tensor input_tensor(input_port.get_element_type(), input_port.get_shape(), blob.ptr(0));
+        ov::Tensor input_tensor(input_port.get_element_type(), input_port.get_shape(), blob.ptr(0));
         infer_request.set_input_tensor(input_tensor);
         infer_request.infer();
         auto output = infer_request.get_output_tensor(0);
         return output;
     }
 
-    vector<vector<int>> YoloDet::postprocess(const Tensor &output, const float &score_threshold, const float &iou_threshold) const
+    vector<vector<int>> YoloDet::postprocess(const ov::Tensor &output, const float &score_threshold, const float &iou_threshold) const
     {
         // 后处理
         float *data = output.data<float>();
-        Mat output_buffer(output.get_shape()[1], output.get_shape()[2], CV_32F, data);
-        transpose(output_buffer, output_buffer);
+        cv::Mat output_buffer(output.get_shape()[1], output.get_shape()[2], CV_32F, data);
+        cv::transpose(output_buffer, output_buffer);
         vector<int> class_ids;
         vector<float> class_scores;
-        vector<Rect> boxes;
+        vector<cv::Rect> boxes;
         vector<vector<int>> results;
         // 遍历输出层
         for (int i = 0; i < output_buffer.rows; i++)
         {
             // 获取类别得分
-            Mat classes_scores = output_buffer.row(i).colRange(4, 6);
-            Point class_id;
+            cv::Mat classes_scores = output_buffer.row(i).colRange(4, 6);
+            cv::Point class_id;
             double maxClassScore;
             // 获取最大类别得分和类别索引
             minMaxLoc(classes_scores, 0, &maxClassScore, 0, &class_id);
@@ -89,12 +87,12 @@ namespace auto_aim
                 int width = int(w * scale);
                 int height = int(h * scale);
                 // 将边界框存储
-                boxes.push_back(Rect(left, top, width, height));
+                boxes.push_back(cv::Rect(left, top, width, height));
             }
         }
         vector<int> indices;
         // 非极大值抑制
-        dnn::NMSBoxes(boxes, class_scores, score_threshold, iou_threshold, indices);
+        cv::dnn::NMSBoxes(boxes, class_scores, score_threshold, iou_threshold, indices);
         for (size_t i = 0; i < indices.size(); i++)
         {
             results.push_back(vector<int>{boxes[indices[i]].tl().x, boxes[indices[i]].tl().y, boxes[indices[i]].br().x, boxes[indices[i]].br().y, class_ids[indices[i]], (int)(class_scores[indices[i]] * 100)});
@@ -102,7 +100,7 @@ namespace auto_aim
         return results;
     }
 
-    vector<Armor> ArmorDet::detect(const vector<vector<int>> &results, const Mat &image)
+    vector<Armor> ArmorDet::detect(const vector<vector<int>> &results, const cv::Mat &image)
     {
         vector<Armor> armors;
         vector<Armor> armors_;
@@ -111,16 +109,16 @@ namespace auto_aim
         for (vector<int> result : results)
         {
             // 获取检测结果的ROI
-            Rect roi = Rect(result[0], result[1], result[2] - result[0], result[3] - result[1]);
+            cv::Rect roi = cv::Rect(result[0], result[1], result[2] - result[0], result[3] - result[1]);
             // 筛选掉超出图像范围的ROI
             if (roi.x < 0 || roi.x + roi.width > image.cols || roi.y < 0 || roi.y + roi.height > image.rows)
             {
                 continue;
             }
             // 获取ROI图像
-            Mat roi_image = image(roi);
+            cv::Mat roi_image = image(roi);
             // 获取ROI左上角坐标
-            Point2f roi_tl = Point2f(result[0], result[1]);
+            cv::Point2f roi_tl = cv::Point2f(result[0], result[1]);
             // 获取ROI中的灯条
             vector<Light> lights = find_lights(roi_image, roi_tl);
             // 匹配灯条
@@ -134,32 +132,32 @@ namespace auto_aim
         return armors_;
     }
 
-    vector<Light> ArmorDet::find_lights(const Mat &roi_image, const Point2f &roi_tl)
+    vector<Light> ArmorDet::find_lights(const cv::Mat &roi_image, const cv::Point2f &roi_tl)
     {
         vector<Light> lights;
-        Mat gray_image, binary_image;
+        cv::Mat gray_image, binary_image;
         // 灰度化、高斯模糊、二值化
-        cvtColor(roi_image, gray_image, COLOR_BGR2GRAY);
+        cvtColor(roi_image, gray_image, cv::COLOR_BGR2GRAY);
         /*GaussianBlur(gray_image, gray_image, Size(3, 3), 0);*/
-        threshold(gray_image, binary_image, 180, 255, THRESH_BINARY);
+        cv::threshold(gray_image, binary_image, 180, 255, cv::THRESH_BINARY);
         // imshow("binary_image", binary_image);
         // waitKey(0);
-        vector<vector<Point>> contours;
-        vector<Vec4i> hierarchy;
+        vector<vector<cv::Point>> contours;
+        vector<cv::Vec4i> hierarchy;
         // 查找轮廓
-        findContours(binary_image, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
-        for (vector<Point> contour : contours)
+        findContours(binary_image, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+        for (vector<cv::Point> contour : contours)
         {
             // 筛选掉小轮廓
             if (contour.size() > 3 && contourArea(contour) > 20)
             {
                 // 获取最小外接矩形
-                RotatedRect rect = minAreaRect(contour);
+                cv::RotatedRect rect = cv::minAreaRect(contour);
 
                 // 判断是否为灯条
                 if (is_light(Light(rect)))
                 {
-                    Point2f vertices[4];
+                    cv::Point2f vertices[4];
                     rect.points(vertices);
                     // 绘制灯条最小外接矩形
                     /*for (int i = 0; i < 4; i++) {
@@ -171,7 +169,7 @@ namespace auto_aim
                         vertices[i].x += roi_tl.x;
                         vertices[i].y += roi_tl.y;
                     }
-                    RotatedRect rect_ = RotatedRect(vertices[0], vertices[1], vertices[2]);
+                    cv::RotatedRect rect_ = cv::RotatedRect(vertices[0], vertices[1], vertices[2]);
                     lights.push_back(Light(rect_));
                 }
             }
@@ -227,7 +225,7 @@ namespace auto_aim
         float center_distance = norm(light1.center - light2.center) / avg_length;
         // TODO: 判断装甲板类型
 
-        Point2f diff = light1.center - light2.center;
+        cv::Point2f diff = light1.center - light2.center;
         float angle = atan2(abs(diff.y), abs(diff.x)) * 180 / CV_PI;
         // cout << length_ratio << " " << center_distance << " " << angle << endl;
         bool is_armor = length_ratio > 0.4 && center_distance > 1.0 && angle < 45;
@@ -244,14 +242,14 @@ namespace auto_aim
         return type;
     }
 
-    PnPSolver::PnPSolver(const Mat &camera_matrix, const Mat &dist_coeffs)
+    PnPSolver::PnPSolver(const cv::Mat &camera_matrix, const cv::Mat &dist_coeffs)
     {
         // 初始化相机参数
         this->camera_matrix = camera_matrix;
         this->dist_coeffs = dist_coeffs;
         // 初始化物体坐标
-        object_points = {Point3f(0, 0, 0), Point3f(0.055 / 2, -0.135 / 2, 0), Point3f(-0.055 / 2, -0.135 / 2, 0),
-                         Point3f(-0.055 / 2, 0.135 / 2, 0), Point3f(0.055 / 2, 0.135 / 2, 0)}; // m为单位
+        object_points = {cv::Point3f(0, 0, 0), cv::Point3f(0.055 / 2, -0.135 / 2, 0), cv::Point3f(-0.055 / 2, -0.135 / 2, 0),
+                         cv::Point3f(-0.055 / 2, 0.135 / 2, 0), cv::Point3f(0.055 / 2, 0.135 / 2, 0)}; // m为单位
     }
 
     vector<double> PnPSolver::solve(const Armor &armor)
@@ -259,7 +257,7 @@ namespace auto_aim
         // 初始化图像坐标
         image_points = {armor.center, armor.left_light.top, armor.left_light.bottom, armor.right_light.bottom, armor.right_light.top};
         // 解PnP
-        solvePnP(object_points, image_points, camera_matrix, dist_coeffs, rvec, tvec);
+        cv::solvePnP(object_points, image_points, camera_matrix, dist_coeffs, rvec, tvec);
         // 计算距离
         double distance = sqrt(pow(tvec.at<double>(0), 2) + pow(tvec.at<double>(1), 2) + pow(tvec.at<double>(2), 2));
         // cout << "distance: " << distance << endl;
