@@ -14,30 +14,50 @@ PnPSolver: 通过PnP解算器求解装甲板的位置
 #include <vector>
 #include <time.h>
 
+#include <NvInfer.h>
+#include <NvInferPlugin.h>
+#include "common.hpp"
+
 #include "armor.hpp"
 
 using namespace std;
 
 namespace auto_aim
 {
-    class YoloDet
-    {
-    public:
-        YoloDet(const string &xml_path, const string &bin_path);
-        vector<cv::Scalar> colors = {cv::Scalar(0, 0, 255), cv::Scalar(0, 255, 0), cv::Scalar(255, 0, 0),
-                                 cv::Scalar(255, 100, 50), cv::Scalar(50, 100, 255), cv::Scalar(255, 50, 100)};
-        const vector<string> class_names = {"red", "blue"};
-        ov::Core core = ov::Core();
-        shared_ptr<ov::Model> model;
-        ov::CompiledModel compiled_model;
-        ov::InferRequest infer_request;
-        float scale;
 
-        cv::Mat letterbox(const cv::Mat &source);
+  class YOLOv8RT
+  {
+  public:
+    explicit YOLOv8RT(const std::string &engine_file_path);
+    ~YOLOv8RT();
 
-        ov::Tensor infer(const cv::Mat &image);
-        vector<vector<int>> postprocess(const ov::Tensor &output, const float &score_threshold);
-    };
+    void make_pipe();
+    void copy_from_Mat(const cv::Mat &image);
+    void letterbox(const cv::Mat &image, cv::Mat &out, cv::Size &size);
+    void infer();
+    void postprocess(std::vector<det::Object> &objs,
+                     float score_thres = 0.25f,
+                     float iou_thres = 0.65f,
+                     int topk = 100,
+                     int num_labels = 2);
+
+    int num_bindings;
+    int num_inputs = 0;
+    int num_outputs = 0;
+    std::vector<det::Binding> input_bindings;
+    std::vector<det::Binding> output_bindings;
+    std::vector<void *> host_ptrs;
+    std::vector<void *> device_ptrs;
+
+    det::PreParam pparam;
+
+  private:
+    nvinfer1::ICudaEngine *engine = nullptr;
+    nvinfer1::IRuntime *runtime = nullptr;
+    nvinfer1::IExecutionContext *context = nullptr;
+    cudaStream_t stream = nullptr;
+    Logger gLogger{nvinfer1::ILogger::Severity::kERROR};
+  };
 
     class ArmorDet
     {

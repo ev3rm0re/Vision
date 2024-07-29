@@ -25,37 +25,36 @@ void detect(int argc, char **argv)
     // 全局变量，检测的颜色
     string detect_color = "blue";
 
-    if (argc < 7)
+    if (argc < 6)
     {
-        cerr << "Usage: " << argv[0] << " detect [yolo_xml_path] [yolo_bin_path] [camera_yaml] [number_classifier_onnx] [number_classifier_label_txt]" << endl;
+        cerr << "Usage: " << argv[0] << " detect [yolo_engine_path] [camera_yaml] [number_classifier_onnx] [number_classifier_label_txt]" << endl;
         return;
     }
-    string xml_path = argv[2];
-    string bin_path = argv[3];
-    // string xml_path = "../models/03.16_yolov8n_e50_int8.xml";
-    // string bin_path = "../models/03.16_yolov8n_e50_int8.bin";
+
+    string engine_path = argv[2];
     // 检查文件是否存在
-    while (access(xml_path.c_str(), F_OK) == -1 || access(bin_path.c_str(), F_OK) == -1)
+    while (access(engine_path.c_str(), F_OK) == -1)
     {
         cerr << "YOLO模型文件不存在，请检查文件路径" << endl;
         sleep(1);
     }
     // YOLO目标检测器
-    unique_ptr<YoloDet> det = make_unique<YoloDet>(xml_path, bin_path);
+    cudaSetDevice(0);
+    unique_ptr<YOLOv8RT> yolo = make_unique<YOLOv8RT>(engine_path);
+    yolo.get()->make_pipe();
     // 装甲板检测器
     unique_ptr<ArmorDet> armor_det = make_unique<ArmorDet>();
 
     // 实例化相机类
-    // HIK::Camera camera;
-    cv::VideoCapture cap("/home/ev3rm0re/blue_bright.mp4");
+    HIK::Camera camera;
 
     // 根据相机内参和畸变参数实例化PnP解算器
-    while (access(argv[4], F_OK) == -1)
+    while (access(argv[3], F_OK) == -1)
     {
         cerr << "相机内参和畸变参数文件不存在，请检查文件路径" << endl;
         sleep(1);
     }
-    YAML::Node config = YAML::LoadFile(argv[4]);
+    YAML::Node config = YAML::LoadFile(argv[3]);
     // YAML::Node config = YAML::LoadFile("../config/camera_matrix.yaml");
     vector<float> camera_vector = config["Camera matrix"].as<vector<float>>();
     vector<float> distortion_coefficients_vector = config["Distortion coefficients"].as<vector<float>>();
@@ -64,33 +63,16 @@ void detect(int argc, char **argv)
     PnPSolver pnp_solver(camera_matrix, distortion_coefficients);
 
     // 数字分类器
-    while (access(argv[5], F_OK) == -1 || access(argv[6], F_OK) == -1)
+    while (access(argv[4], F_OK) == -1 || access(argv[5], F_OK) == -1)
     {
         cerr << "数字分类器模型文件不存在，请检查文件路径" << endl;
         sleep(1);
     }
-    NumberClassifier nc(argv[5], argv[6], 0.6);
-    // NumberClassifier nc("../models/mlp.onnx", "../models/label.txt", 0.6);
+    NumberClassifier nc(argv[4], argv[5], 0.6);
 
-    // 跟踪器
-    cv::Ptr<cv::Tracker> tracker;
-    cv::Rect bbox;
-
-    // 打开串口
-    // Serial s;
-    // while (s.open("/dev/ttyUSB0", 115200, 8, Serial::PARITY_NONE, 1) != Serial::OK)     // 循环尝试打开串口
-    // {
-    //     cerr << "Failed to open serial port" << endl;
-    //     sleep(1);
-    // }
-
-    // 串口数据包
-    SendPacket send_packet;
-    ReceivePacket receive_packet;
-    std::map<std::string, uint8_t> id_unit8_map{
-    {"negative", -1},  {"outpost", 0}, {"1", 1}, {"2", 2},
-    {"3", 3}, {"4", 4}, {"5", 5}, {"guard", 6}, {"base", 7}};
-
+    vector<Armor> armors;
+    vector<vector<int>> results;
+    vector<det::Object> output;
     // 用于存储pnp解算后的数据
     vector<vector<double>> datas;
 
@@ -98,52 +80,46 @@ void detect(int argc, char **argv)
     cv::Mat frame;
 
     // 打开摄像头
-    // bool isopened = camera.open();
-
-    // 用于追踪
-    bool tracker_initialized = false;
-    int id = 0;
-
-    // 实例化一个卡尔曼滤波来预测下一帧的位置
-    cv::KalmanFilter KF(6, 2, 0);
-
-    // 初始化卡尔曼滤波器的状态转移矩阵
-    KF.transitionMatrix = (cv::Mat_<float>(6, 6) << 1, 0, 1, 0, 0.1, 0,
-                                                    0, 1, 0, 1, 0, 0.1,
-                                                    0, 0, 1, 0, 1, 0,
-                                                    0, 0, 0, 1, 0, 1,
-                                                    0, 0, 0, 0, 1, 0,
-                                                    0, 0, 0, 0, 0, 1);
-    // 初始化状态估计和协方差矩阵
-    cv::Mat state(6, 1, CV_32F);    // (x, y, vx, vy, ax, ay)
-    cv::Mat processNoise(6, 1, CV_32F);
-    cv::setIdentity(KF.measurementMatrix);
-    cv::setIdentity(KF.processNoiseCov, cv::Scalar::all(1e-4));
-    cv::setIdentity(KF.measurementNoiseCov, cv::Scalar::all(1e-1));
-    cv::setIdentity(KF.errorCovPost, cv::Scalar::all(1));
+    bool isopened = camera.open();
 
     while (1)
     {
+        armors.clear();
+        results.clear();
+        output.clear();
+        datas.clear();
         auto start = chrono::high_resolution_clock::now();
-        // if (camera.cap(&frame) != true)
-        // {
-        //     camera.close();
-        //     cerr << "Failed to capture frame" << endl;
-        //     cerr << "reopening camera" << endl;
-        //     while (!camera.open())
-        //     {
-        //         cerr << "Failed to reopen camera" << endl;
-        //         sleep(1);
-        //     }
-        // }
-        cap >> frame;
+        if (camera.cap(&frame) != true)
+        {
+            camera.close();
+            cerr << "Failed to capture frame" << endl;
+            cerr << "reopening camera" << endl;
+            while (!camera.open())
+            {
+                cerr << "Failed to reopen camera" << endl;
+                sleep(1);
+            }
+        }
+        // cap >> frame;
         if (frame.empty())
         {
             break;
         }
-        ov::Tensor output = det.get()->infer(frame);
-        vector<vector<int>> results = det.get()->postprocess(output, 0.5);
-        vector<Armor> armors = armor_det.get()->detect(results, frame);
+        cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
+        yolo->copy_from_Mat(frame);
+        yolo->infer();
+        yolo->postprocess(output, 0.5);
+        for (auto &obj : output)
+        {
+            std::vector<int> result;
+            result.push_back(obj.rect.x);
+            result.push_back(obj.rect.y);
+            result.push_back(obj.rect.x + obj.rect.width);
+            result.push_back(obj.rect.y + obj.rect.height);
+            result.push_back(obj.label);
+            results.push_back(result);
+        }
+        armors = armor_det.get()->detect(results, frame);
         nc.extractNumbers(frame, armors);
         nc.classify(armors);
         auto end = chrono::high_resolution_clock::now();
@@ -166,71 +142,16 @@ void detect(int argc, char **argv)
             sort(datas.begin(), datas.end(), [](vector<double> a, vector<double> b)
                  { return a[2] < b[2]; });               // 按距离从小到大排序
             datas.erase(datas.begin() + 1, datas.end()); // 只保留最近的目标 TODO: 可以手动切换目标
-
-            // 用卡尔曼滤波预测下一帧的位置
-            // cv::Point2f observation(datas[0][0], datas[0][1]);
-            // cv::Mat prediction = KF.predict();
-            // KF.correct((cv::Mat_<float>(2, 1) << observation.x, observation.y));
-            // cv::Point2f predict_pt(prediction.at<float>(0), prediction.at<float>(1));
-            // circle(frame, predict_pt, 8, cv::Scalar(255, 0, 0), -1);
-            // circle(frame, observation, 10, cv::Scalar(0, 0, 255), 2);
-
-            // if (!tracker_initialized)
-            // {
-            //     bbox = cv::Rect(armors[0].left_light.top, armors[0].left_light.top + cv::Point2f(20, 20));
-            //     tracker = cv::TrackerCSRT::create();
-            //     id++;
-            //     tracker->init(frame, bbox);
-            //     tracker_initialized = true;
-            // }
-            // else
-            // {
-            //     bool tracking = tracker->update(frame, bbox);
-
-            //     if (tracking)
-            //     {
-            //         // rectangle(frame, bbox, Scalar(0, 255, 0), 2);
-            //         putText(frame, "ID: " + to_string(id), armors[0].center + cv::Point2f(0, -40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
-            //     }
-            //     else
-            //     {
-            //         tracker.release();
-            //         tracker_initialized = false;
-            //     }
-            // }
-            // // 通过串口发送数据
-            // send_packet.yaw = datas[0][2];              // 相机坐标系与云台坐标系相反
-            // send_packet.pitch = datas[0][3];
-            // send_packet.distance = datas[0][4];
-            // send_packet.tracking = tracker_initialized;
-            // send_packet.id = id_unit8_map.at(armors[0].number);
-            // send_packet.armors_num = 4;
-            // send_packet.reserved = 0;
-            // crc16::Append_CRC16_Check_Sum(reinterpret_cast<uint8_t *>(&send_packet), sizeof(SendPacket));
-            // // cout << "yaw: " << send_packet.yaw << " distance: " << send_packet.distance << " tracking: " << send_packet.tracking << " id: " << (int)send_packet.id << endl;
-            // if (sendPacket(s, send_packet) != sizeof(SendPacket))
-            // {
-            //     cerr << "Failed to send packet, reopening serial port..." << endl;
-            //     // 重开串口
-            //     s.close();
-            //     if (s.open("/dev/ttyUSB0", 115200, 8, Serial::PARITY_NONE, 1) != Serial::OK)     // 循环尝试打开串口
-            //     {
-            //         cerr << "Failed to reopen serial port" << endl;
-            //     }
-            // }
-            // // TODO: 通过串口接收数据
-            // receivePacket(s, receive_packet);
         }
 
-        datas.clear();
         cv::imshow("frame", frame);
         if (cv::waitKey(1) == 27)
         {
             break;
         }
     }
-    cap.release();
-    // camera.close();
+    // cap.release();
+    camera.close();
     cv::destroyAllWindows();
 }
 
@@ -311,9 +232,9 @@ void calibrate()
 
     // 输出相机内参和畸变参数
     std::cout << "Camera matrix:" << endl
-         << cameraMatrix << endl;
+              << cameraMatrix << endl;
     std::cout << "Distortion coefficients:" << endl
-         << distCoeffs << endl;
+              << distCoeffs << endl;
     return;
 }
 

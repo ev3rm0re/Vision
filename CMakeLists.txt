@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.5.0)
 project(Vision VERSION 0.1.0 LANGUAGES C CXX)
 
+add_definitions(-Wno-deprecated-declarations)
+
 include(CTest)
 enable_testing()
 
@@ -10,6 +12,17 @@ find_package(yaml-cpp REQUIRED)
 
 find_library(OpenVINO_LIBRARIES NAMES libopenvino.so HINTS /usr/lib)
 find_library(YAMLCPP_LIBRARIES NAMES libyaml-cpp.so HINTS /usr/lib)
+
+# TensorRT
+include_directories(/home/ev3rm0re/Programs/TensorRT-10.2.0.19/include)
+find_library(TENSORRT_LIBRARIES NAME libnvinfer.so HINTS "/home/ev3rm0re/Programs/TensorRT-10.2.0.19/lib")
+find_library(TENSORRT_PLUGIN_LIBRARIES NAME libnvinfer_plugin.so HINTS "/home/ev3rm0re/Programs/TensorRT-10.2.0.19/lib")
+link_directories(${TENSORRT_LIBRARIES})
+link_directories(${TENSORRT_PLUGIN_LIBRARIES})
+
+# CUDA
+find_package(CUDA REQUIRED)
+include_directories(${CUDA_INCLUDE_DIRS})
 
 include_directories(${OpenCV_INCLUDE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR}/include)
@@ -28,6 +41,7 @@ link_libraries(
 add_executable(Vision src/main.cpp src/camera.cpp src/detector.cpp src/number_classifier.cpp src/timestamp.cpp src/stream.cpp src/serialport.cpp src/crc.cpp)
 
 target_link_directories(Vision PUBLIC /opt/MVS/lib)
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${OpenVINO_LIBS} ${TENSORRT_LIBRARIES} ${TENSORRT_PLUGIN_LIBRARIES} ${CUDA_LIBRARIES})
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

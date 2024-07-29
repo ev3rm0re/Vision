@@ -73,13 +73,15 @@
         "typeinfo": "cpp",
         "variant": "cpp",
         "*.ipp": "cpp",
-        "*.txx": "cpp"
+        "*.txx": "cpp",
+        "future": "cpp",
+        "valarray": "cpp",
+        "__nullptr": "cpp"
     },
     "cmake.debugConfig": {
         "args": [
             "detect",
-            "../models/yolov10n_e10.xml",
-            "../models/yolov10n_e10.bin",
+            "../models/03.16_yolov8n_e50.engine",
             "../config/camera_matrix.yaml",
             "../models/mlp.onnx",
             "../models/label.txt"
