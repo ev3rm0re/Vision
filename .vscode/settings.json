@@ -78,8 +78,8 @@
     "cmake.debugConfig": {
         "args": [
             "detect",
-            "../models/03.16_yolov8n_e50_int8.xml",
-            "../models/03.16_yolov8n_e50_int8.bin",
+            "../models/yolov10n_e10.xml",
+            "../models/yolov10n_e10.bin",
             "../config/camera_matrix.yaml",
             "../models/mlp.onnx",
             "../models/label.txt"

@@ -142,7 +142,7 @@ void detect(int argc, char **argv)
             break;
         }
         ov::Tensor output = det.get()->infer(frame);
-        vector<vector<int>> results = det.get()->postprocess(output, 0.5);
+        vector<vector<int>> results = det.get()->postprocess(output, 0.5, 0.5);
         vector<Armor> armors = armor_det.get()->detect(results, frame);
         nc.extractNumbers(frame, armors);
         nc.classify(armors);

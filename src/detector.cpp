@@ -52,50 +52,32 @@ namespace auto_aim
         return output;
     }
 
-    vector<vector<int>> YoloDet::postprocess(const ov::Tensor &output, const float &score_threshold, const float &iou_threshold) const
-    {
+    std::vector<std::vector<int>> YoloDet::postprocess(const ov::Tensor& output, const float& score_threshold) {
         // 后处理
-        float *data = output.data<float>();
-        cv::Mat output_buffer(output.get_shape()[1], output.get_shape()[2], CV_32F, data);
-        cv::transpose(output_buffer, output_buffer);
-        vector<int> class_ids;
-        vector<float> class_scores;
-        vector<cv::Rect> boxes;
-        vector<vector<int>> results;
+        float* data = output.data<float>();                         // 获取输出数据
+        cv::Mat output_buffer(output.get_shape()[1], output.get_shape()[2], CV_32F, data);	// 创建输出缓冲区
+        //cv::transpose(output_buffer, output_buffer);				// 转置
+        std::vector<std::vector<int>> results;
         // 遍历输出层
-        for (int i = 0; i < output_buffer.rows; i++)
-        {
+        for (int i = 0; i < output_buffer.rows; i++) {              // 遍历每个边界框
             // 获取类别得分
-            cv::Mat classes_scores = output_buffer.row(i).colRange(4, 6);
-            cv::Point class_id;
-            double maxClassScore;
-            // 获取最大类别得分和类别索引
-            minMaxLoc(classes_scores, 0, &maxClassScore, 0, &class_id);
-            if (maxClassScore > score_threshold)
-            {
-                // 将类别得分和类别索引存储
-                class_scores.push_back(maxClassScore);
-                class_ids.push_back(class_id.x);
+            float score = output_buffer.at<float>(i, 4);
+            float class_id = output_buffer.at<float>(i, 5);
+            if (score > score_threshold) {							// 判断是否满足阈值
                 // 获取边界框
-                float cx = output_buffer.at<float>(i, 0);
-                float cy = output_buffer.at<float>(i, 1);
-                float w = output_buffer.at<float>(i, 2);
-                float h = output_buffer.at<float>(i, 3);
+                float ltx = output_buffer.at<float>(i, 0);
+                float lty = output_buffer.at<float>(i, 1);
+                float rbx = output_buffer.at<float>(i, 2);
+                float rby = output_buffer.at<float>(i, 3);
                 // 计算边界框真实坐标
-                int left = int((cx - 0.5 * w) * scale);
-                int top = int((cy - 0.5 * h) * scale);
-                int width = int(w * scale);
-                int height = int(h * scale);
+                int left = int(ltx * scale);
+                int top = int(lty * scale);
+                int right = int(rbx * scale);
+                int bottom = int(rby * scale);
+                std::vector<int> box = { left, top, right, bottom, int(class_id), int(score) };
                 // 将边界框存储
-                boxes.push_back(cv::Rect(left, top, width, height));
+                results.push_back(box);
             }
-        }
-        vector<int> indices;
-        // 非极大值抑制
-        cv::dnn::NMSBoxes(boxes, class_scores, score_threshold, iou_threshold, indices);
-        for (size_t i = 0; i < indices.size(); i++)
-        {
-            results.push_back(vector<int>{boxes[indices[i]].tl().x, boxes[indices[i]].tl().y, boxes[indices[i]].br().x, boxes[indices[i]].br().y, class_ids[indices[i]], (int)(class_scores[indices[i]] * 100)});
         }
         return results;
     }
@@ -111,7 +93,7 @@ namespace auto_aim
             // 获取检测结果的ROI
             cv::Rect roi = cv::Rect(result[0], result[1], result[2] - result[0], result[3] - result[1]);
             // 筛选掉超出图像范围的ROI
-            if (roi.x < 0 || roi.x + roi.width > image.cols || roi.y < 0 || roi.y + roi.height > image.rows)
+            if (roi.x < 0 || roi.x + roi.width > image.cols || roi.y < 0 || roi.y + roi.height > image.rows || roi.height < 0 || roi.width < 0)
             {
                 continue;
             }

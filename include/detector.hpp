@@ -36,7 +36,7 @@ namespace auto_aim
         cv::Mat letterbox(const cv::Mat &source);
 
         ov::Tensor infer(const cv::Mat &image);
-        vector<vector<int>> postprocess(const ov::Tensor &output, const float &score_threshold, const float &iou_threshold) const;
+        vector<vector<int>> postprocess(const ov::Tensor &output, const float &score_threshold);
     };
 
     class ArmorDet
