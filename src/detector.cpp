@@ -39,27 +39,33 @@ namespace auto_aim
         assert(this->context != nullptr);
         cudaStreamCreate(&this->stream);
 
-        this->num_bindings = this->engine->getNbIOTensors();
+        // this->num_bindings = this->engine->getNbIOTensors();
+        this->num_bindings = this->num_bindings = this->engine->getNbBindings();
 
         for (int i = 0; i < this->num_bindings; ++i)
         {
             det::Binding binding;
             nvinfer1::Dims dims;
 
-            std::string name = this->engine->getIOTensorName(i);
-            nvinfer1::DataType dtype = this->engine->getTensorDataType(name.c_str());
+            // std::string name = this->engine->getIOTensorName(i);
+            // nvinfer1::DataType dtype = this->engine->getTensorDataType(name.c_str());
+            nvinfer1::DataType dtype = this->engine->getBindingDataType(i);
+            std::string name = this->engine->getBindingName(i);
 
             binding.name = name;
             binding.dsize = type_to_size(dtype);
 
-            bool IsInput = engine->getTensorIOMode(name.c_str()) == nvinfer1::TensorIOMode::kINPUT;
+            // bool IsInput = engine->getTensorIOMode(name.c_str()) == nvinfer1::TensorIOMode::kINPUT;
+            bool IsInput = engine->bindingIsInput(i);
 
             if (IsInput)
             {
                 this->num_inputs += 1;
-                dims = this->engine->getProfileShape(name.c_str(), 0, nvinfer1::OptProfileSelector::kMAX);
+                //  dims = this->engine->getProfileShape(name.c_str(), 0, nvinfer1::OptProfileSelector::kMAX);
+                dims = this->engine->getProfileDimensions(i, 0, nvinfer1::OptProfileSelector::kMAX);
                 // set max opt shape
-                this->context->setInputShape(name.c_str(), dims);
+                // this->context->setInputShape(name.c_str(), dims);
+                this->context->setBindingDimensions(i, dims);
 
                 binding.size = get_size_by_dims(dims);
                 binding.dims = dims;
@@ -67,8 +73,8 @@ namespace auto_aim
             }
             else
             {
-
-                dims = this->context->getTensorShape(name.c_str());
+                // dims = this->context->getTensorShape(name.c_str());
+                dims = this->context->getBindingDimensions(i);
 
                 binding.size = get_size_by_dims(dims);
                 binding.dims = dims;
@@ -80,9 +86,12 @@ namespace auto_aim
 
     YOLOv8RT::~YOLOv8RT()
     {
-        delete this->context;
-        delete this->engine;
-        delete this->runtime;
+        // delete this->context;
+        // delete this->engine;
+        // delete this->runtime;
+        this->context->destroy();
+        this->engine->destroy();
+        this->runtime->destroy();
         cudaStreamDestroy(this->stream);
         for (auto &ptr : this->device_ptrs)
         {
@@ -104,9 +113,9 @@ namespace auto_aim
             CHECK(cudaMallocAsync(&d_ptr, bindings.size * bindings.dsize, this->stream));
             this->device_ptrs.push_back(d_ptr);
 
-            auto name = bindings.name.c_str();
-            this->context->setInputShape(name, bindings.dims);
-            this->context->setTensorAddress(name, d_ptr);
+            // auto name = bindings.name.c_str();
+            // this->context->setInputShape(name, bindings.dims);
+            // this->context->setTensorAddress(name, d_ptr);
         }
 
         for (auto &bindings : this->output_bindings)
@@ -118,8 +127,8 @@ namespace auto_aim
             this->device_ptrs.push_back(d_ptr);
             this->host_ptrs.push_back(h_ptr);
 
-            auto name = bindings.name.c_str();
-            this->context->setTensorAddress(name, d_ptr);
+            // auto name = bindings.name.c_str();
+            // this->context->setTensorAddress(name, d_ptr);
         }
     }
 
@@ -190,14 +199,16 @@ namespace auto_aim
         CHECK(cudaMemcpyAsync(
             this->device_ptrs[0], nchw.ptr(), nchw.total() * nchw.elemSize(), cudaMemcpyHostToDevice, this->stream));
 
-        auto name = this->input_bindings[0].name.c_str();
-        this->context->setInputShape(name, nvinfer1::Dims{4, {1, 3, size.height, size.width}});
-        this->context->setTensorAddress(name, this->device_ptrs[0]);
+        // auto name = this->input_bindings[0].name.c_str();
+        // this->context->setInputShape(name, nvinfer1::Dims{4, {1, 3, size.height, size.width}});
+        // this->context->setTensorAddress(name, this->device_ptrs[0]);
+        this->context->setBindingDimensions(0, nvinfer1::Dims{4, {1, 3, height, width}});
     }
 
     void YOLOv8RT::infer()
     {
-        this->context->enqueueV3(this->stream);
+        // this->context->enqueueV3(this->stream);
+        this->context->enqueueV2(this->device_ptrs.data(), this->stream, nullptr);
         for (int i = 0; i < this->num_outputs; i++)
         {
             size_t osize = this->output_bindings[i].size * this->output_bindings[i].dsize;
