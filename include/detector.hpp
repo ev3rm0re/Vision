@@ -8,7 +8,6 @@ PnPSolver: 通过PnP解算器求解装甲板的位置
 #ifndef _DETECTOR_HPP_
 #define _DETECTOR_HPP_
 
-#include <openvino/openvino.hpp>
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <vector>

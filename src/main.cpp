@@ -4,7 +4,6 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/video/video.hpp>
 #include <opencv2/opencv.hpp>
-#include <opencv2/tracking.hpp>
 
 #include <camera.hpp>
 #include <detector.hpp>

@@ -6,11 +6,9 @@ add_definitions(-Wno-deprecated-declarations)
 include(CTest)
 enable_testing()
 
-find_package(OpenVINO REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
-find_library(OpenVINO_LIBRARIES NAMES libopenvino.so HINTS /usr/lib)
 find_library(YAMLCPP_LIBRARIES NAMES libyaml-cpp.so HINTS /usr/lib)
 
 # TensorRT
@@ -40,7 +38,7 @@ link_libraries(
 
 add_executable(Vision src/main.cpp src/camera.cpp src/detector.cpp src/number_classifier.cpp src/timestamp.cpp src/stream.cpp src/serialport.cpp src/crc.cpp)
 
-target_link_directories(Vision PUBLIC /opt/MVS/lib)
+# target_link_directories(Vision PUBLIC /opt/MVS/lib)
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} ${OpenVINO_LIBS} ${TENSORRT_LIBRARIES} ${TENSORRT_PLUGIN_LIBRARIES} ${CUDA_LIBRARIES})
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
