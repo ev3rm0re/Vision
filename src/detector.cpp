@@ -129,7 +129,8 @@ namespace auto_aim
         for (auto &bindings : this->input_bindings)
         {
             void *d_ptr;
-            CHECK(cudaMalloc(&d_ptr, bindings.size * bindings.dsize));                  // CHECK(cudaMallocAsync(&d_ptr, bindings.size * bindings.dsize, this->stream)); cuda11
+            CHECK(cudaMalloc(&d_ptr, bindings.size * bindings.dsize)); // cuda10.2
+            // CHECK(cudaMallocAsync(&d_ptr, bindings.size * bindings.dsize, this->stream)); // cuda11
             this->device_ptrs.push_back(d_ptr);
 
 #ifdef TENSORRT10
@@ -143,7 +144,8 @@ namespace auto_aim
         {
             void *d_ptr, *h_ptr;
             size_t size = bindings.size * bindings.dsize;
-            CHECK(cudaMalloc(&d_ptr, size));                            // CHECK(cudaMallocAsync(&d_ptr, size, this->stream)); cuda11
+            CHECK(cudaMalloc(&d_ptr, size)); // cuda10.2
+            // CHECK(cudaMallocAsync(&d_ptr, size, this->stream)); // cuda11
             CHECK(cudaHostAlloc(&h_ptr, size, 0));
             this->device_ptrs.push_back(d_ptr);
             this->host_ptrs.push_back(h_ptr);
