@@ -117,6 +117,7 @@ void detect(int argc, char **argv)
             result.push_back(obj.rect.x + obj.rect.width);
             result.push_back(obj.rect.y + obj.rect.height);
             result.push_back(obj.label);
+            result.push_back(obj.prob * 100);
             results.push_back(result);
         }
         armors = armor_det.get()->detect(results, frame);
@@ -134,7 +135,7 @@ void detect(int argc, char **argv)
             line(frame, armor.left_light.top, armor.right_light.bottom, cv::Scalar(0, 255, 0), 2);
             line(frame, armor.left_light.bottom, armor.right_light.top, cv::Scalar(0, 255, 0), 2);
             putText(frame, armor.classfication_result, armor.right_light.top + cv::Point2f(5, -20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
-            putText(frame, "yolo conf: " + to_string(armor.yolo_confidence).substr(0, 2), armor.right_light.center + cv::Point2f(5, 0), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
+            putText(frame, "yolo conf: " + to_string(armor.yolo_confidence).substr(0, 4), armor.right_light.center + cv::Point2f(5, 0), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
             putText(frame, "distance: " + to_string(armor.distance).substr(0, 4) + "M", armor.right_light.bottom + cv::Point2f(5, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
         }
         if (datas.size() > 0)
