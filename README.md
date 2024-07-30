@@ -1,14 +1,16 @@
 # 装甲板检测简单实现，基于YOLOv8(openvino推理)
 
+* 目前卡在串口部分，主程序已注释串口代码
+
 ## requirements:
 
 * Ubuntu22.04 (其他版本没试过)
 
 * openvino (安装方法官网有，apt安装)
 
-* opencv-4.9.0 (这个需要自己编译)
+* opencv
 
-* libyaml-cpp (apt安装)
+* libyaml-cpp-dev (apt安装)
 
 * 海康威视MVS软件用来驱动相机 (官网安装)
 
