@@ -1,12 +1,14 @@
 # 装甲板检测简单实现，基于YOLOv8(tensorrt推理)
 
+* 目前卡在串口部分，主程序还没写串口代码
+
 ## requirements:
 
 * Ubuntu22.04 (其他版本没试过)
 
 * tensorrt
 
-* opencv-4.9.0
+* opencv
 
 * libyaml-cpp-dev (apt安装)
 
