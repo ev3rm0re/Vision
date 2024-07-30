@@ -35,37 +35,49 @@ namespace auto_aim
         assert(this->engine != nullptr);
         delete[] trtModelStream;
         this->context = this->engine->createExecutionContext();
-
         assert(this->context != nullptr);
+        
         cudaStreamCreate(&this->stream);
 
-        // this->num_bindings = this->engine->getNbIOTensors();
+#ifdef TENSORRT10
+        this->num_bindings = this->engine->getNbIOTensors();
+#else
         this->num_bindings = this->num_bindings = this->engine->getNbBindings();
+#endif
 
         for (int i = 0; i < this->num_bindings; ++i)
         {
             det::Binding binding;
             nvinfer1::Dims dims;
 
-            // std::string name = this->engine->getIOTensorName(i);
-            // nvinfer1::DataType dtype = this->engine->getTensorDataType(name.c_str());
+#ifdef TENSORRT10
+            std::string name = this->engine->getIOTensorName(i);
+            nvinfer1::DataType dtype = this->engine->getTensorDataType(name.c_str());
+#else
             nvinfer1::DataType dtype = this->engine->getBindingDataType(i);
             std::string name = this->engine->getBindingName(i);
-
+#endif
             binding.name = name;
             binding.dsize = type_to_size(dtype);
 
-            // bool IsInput = engine->getTensorIOMode(name.c_str()) == nvinfer1::TensorIOMode::kINPUT;
+#ifdef TENSORRT10
+            bool IsInput = engine->getTensorIOMode(name.c_str()) == nvinfer1::TensorIOMode::kINPUT;
+#else
             bool IsInput = engine->bindingIsInput(i);
-
+#endif
             if (IsInput)
             {
                 this->num_inputs += 1;
-                //  dims = this->engine->getProfileShape(name.c_str(), 0, nvinfer1::OptProfileSelector::kMAX);
+
+#ifdef TENSORRT10
+                dims = this->engine->getProfileShape(name.c_str(), 0, nvinfer1::OptProfileSelector::kMAX);
+                // set max opt shape
+                this->context->setInputShape(name.c_str(), dims);
+#else
                 dims = this->engine->getProfileDimensions(i, 0, nvinfer1::OptProfileSelector::kMAX);
                 // set max opt shape
-                // this->context->setInputShape(name.c_str(), dims);
                 this->context->setBindingDimensions(i, dims);
+#endif
 
                 binding.size = get_size_by_dims(dims);
                 binding.dims = dims;
@@ -73,8 +85,11 @@ namespace auto_aim
             }
             else
             {
-                // dims = this->context->getTensorShape(name.c_str());
+#ifdef TENSORRT10
+                dims = this->context->getTensorShape(name.c_str());
+#else
                 dims = this->context->getBindingDimensions(i);
+#endif
 
                 binding.size = get_size_by_dims(dims);
                 binding.dims = dims;
@@ -86,12 +101,16 @@ namespace auto_aim
 
     YOLOv8RT::~YOLOv8RT()
     {
-        // delete this->context;
-        // delete this->engine;
-        // delete this->runtime;
+#ifdef TENSORRT10
+        delete this->context;
+        delete this->engine;
+        delete this->runtime;
+#else
         this->context->destroy();
         this->engine->destroy();
         this->runtime->destroy();
+#endif
+
         cudaStreamDestroy(this->stream);
         for (auto &ptr : this->device_ptrs)
         {
@@ -110,25 +129,28 @@ namespace auto_aim
         for (auto &bindings : this->input_bindings)
         {
             void *d_ptr;
-            CHECK(cudaMallocAsync(&d_ptr, bindings.size * bindings.dsize, this->stream));
+            CHECK(cudaMalloc(&d_ptr, bindings.size * bindings.dsize));                  // CHECK(cudaMallocAsync(&d_ptr, bindings.size * bindings.dsize, this->stream)); cuda11
             this->device_ptrs.push_back(d_ptr);
 
-            // auto name = bindings.name.c_str();
-            // this->context->setInputShape(name, bindings.dims);
-            // this->context->setTensorAddress(name, d_ptr);
+#ifdef TENSORRT10
+            auto name = bindings.name.c_str();
+            this->context->setInputShape(name, bindings.dims);
+            this->context->setTensorAddress(name, d_ptr);
+#endif
         }
 
         for (auto &bindings : this->output_bindings)
         {
             void *d_ptr, *h_ptr;
             size_t size = bindings.size * bindings.dsize;
-            CHECK(cudaMallocAsync(&d_ptr, size, this->stream));
+            CHECK(cudaMalloc(&d_ptr, size));                            // CHECK(cudaMallocAsync(&d_ptr, size, this->stream)); cuda11
             CHECK(cudaHostAlloc(&h_ptr, size, 0));
             this->device_ptrs.push_back(d_ptr);
             this->host_ptrs.push_back(h_ptr);
-
-            // auto name = bindings.name.c_str();
-            // this->context->setTensorAddress(name, d_ptr);
+#ifdef TENSORRT10
+            auto name = bindings.name.c_str();
+            this->context->setTensorAddress(name, d_ptr);
+#endif
         }
     }
 
@@ -194,21 +216,25 @@ namespace auto_aim
         int height = in_binding.dims.d[2];
         cv::Size size{width, height};
         this->letterbox(image, nchw, size);
-        // std::cout << nchw.total() * nchw.elemSize() << std::endl;
-        // std::cout << nchw.size << std::endl;
+
         CHECK(cudaMemcpyAsync(
             this->device_ptrs[0], nchw.ptr(), nchw.total() * nchw.elemSize(), cudaMemcpyHostToDevice, this->stream));
-
-        // auto name = this->input_bindings[0].name.c_str();
-        // this->context->setInputShape(name, nvinfer1::Dims{4, {1, 3, size.height, size.width}});
-        // this->context->setTensorAddress(name, this->device_ptrs[0]);
+#ifdef TENSORRT10
+        auto name = this->input_bindings[0].name.c_str();
+        this->context->setInputShape(name, nvinfer1::Dims{4, {1, 3, size.height, size.width}});
+        this->context->setTensorAddress(name, this->device_ptrs[0]);
+#else
         this->context->setBindingDimensions(0, nvinfer1::Dims{4, {1, 3, height, width}});
+#endif
     }
 
     void YOLOv8RT::infer()
     {
-        // this->context->enqueueV3(this->stream);
+#ifdef TENSORRT10
+        this->context->enqueueV3(this->stream);
+#else
         this->context->enqueueV2(this->device_ptrs.data(), this->stream, nullptr);
+#endif
         for (int i = 0; i < this->num_outputs; i++)
         {
             size_t osize = this->output_bindings[i].size * this->output_bindings[i].dsize;
@@ -327,8 +353,8 @@ namespace auto_aim
         cvtColor(roi_image, gray_image, cv::COLOR_BGR2GRAY);
         /*GaussianBlur(gray_image, gray_image, Size(3, 3), 0);*/
         cv::threshold(gray_image, binary_image, 180, 255, cv::THRESH_BINARY);
-        // imshow("binary_image", binary_image);
-        // waitKey(0);
+        // cv::imshow("binary_image", binary_image);
+        // cv::waitKey(1);
         vector<vector<cv::Point>> contours;
         vector<cv::Vec4i> hierarchy;
         // 查找轮廓
@@ -336,7 +362,7 @@ namespace auto_aim
         for (vector<cv::Point> contour : contours)
         {
             // 筛选掉小轮廓
-            if (contour.size() > 3 && contourArea(contour) > 20)
+            if (contour.size() > 3 && contourArea(contour) > 5)
             {
                 // 获取最小外接矩形
                 cv::RotatedRect rect = cv::minAreaRect(contour);

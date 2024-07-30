@@ -76,12 +76,13 @@
         "*.txx": "cpp",
         "future": "cpp",
         "valarray": "cpp",
-        "__nullptr": "cpp"
+        "__nullptr": "cpp",
+        "filesystem": "cpp"
     },
     "cmake.debugConfig": {
         "args": [
             "detect",
-            "../models/03.16_yolov8n_e50.engine",
+            "../models/03.16_yolov8n_e50_jetson.engine",
             "../config/camera_matrix.yaml",
             "../models/mlp.onnx",
             "../models/label.txt"

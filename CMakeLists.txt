@@ -12,9 +12,9 @@ find_package(yaml-cpp REQUIRED)
 find_library(YAMLCPP_LIBRARIES NAMES libyaml-cpp.so HINTS /usr/lib)
 
 # TensorRT
-include_directories(/home/ev3rm0re/Programs/TensorRT-10.2.0.19/include)
-find_library(TENSORRT_LIBRARIES NAME libnvinfer.so HINTS "/home/ev3rm0re/Programs/TensorRT-10.2.0.19/lib")
-find_library(TENSORRT_PLUGIN_LIBRARIES NAME libnvinfer_plugin.so HINTS "/home/ev3rm0re/Programs/TensorRT-10.2.0.19/lib")
+# include_directories(/home/ev3rm0re/Programs/TensorRT-10.2.0.19/include)
+find_library(TENSORRT_LIBRARIES NAME libnvinfer.so HINTS "/usr/lib/aarch64-linux-gnu")
+find_library(TENSORRT_PLUGIN_LIBRARIES NAME libnvinfer_plugin.so HINTS "/usr/lib/aarch64-linux-gnu")
 link_directories(${TENSORRT_LIBRARIES})
 link_directories(${TENSORRT_PLUGIN_LIBRARIES})
 
@@ -28,9 +28,8 @@ include_directories(/opt/MVS/include)
 include_directories(/usr/include/yaml-cpp)
 
 link_libraries(
-    /opt/MVS/lib/64/libMvCameraControl.so
-    /usr/local/lib/libopencv_world.so
-    ${OpenVINO_LIBRARIES}
+    /opt/MVS/lib/aarch64/libMvCameraControl.so
+    ${OpenCV_LIBS}
     ${YAMLCPP_LIBRARIES}
 )
 

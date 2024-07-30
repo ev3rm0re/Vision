@@ -21,7 +21,7 @@ using namespace auto_aim;
 
 void detect(int argc, char **argv)
 {
-    // 全局变量，检测的颜色
+    // 检测的颜色
     string detect_color = "blue";
 
     if (argc < 6)
@@ -72,6 +72,7 @@ void detect(int argc, char **argv)
     vector<Armor> armors;
     vector<vector<int>> results;
     vector<det::Object> output;
+    vector<int> result;
     // 用于存储pnp解算后的数据
     vector<vector<double>> datas;
 
@@ -86,6 +87,7 @@ void detect(int argc, char **argv)
         armors.clear();
         results.clear();
         output.clear();
+        result.clear();
         datas.clear();
         auto start = chrono::high_resolution_clock::now();
         if (camera.cap(&frame) != true)
@@ -104,13 +106,12 @@ void detect(int argc, char **argv)
         {
             break;
         }
-        cv::cvtColor(frame, frame, cv::COLOR_BGR2RGB);
+
         yolo->copy_from_Mat(frame);
         yolo->infer();
         yolo->postprocess(output, 0.5);
         for (auto &obj : output)
         {
-            std::vector<int> result;
             result.push_back(obj.rect.x);
             result.push_back(obj.rect.y);
             result.push_back(obj.rect.x + obj.rect.width);
