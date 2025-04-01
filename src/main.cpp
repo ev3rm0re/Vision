@@ -18,6 +18,7 @@
 #include <unistd.h>
 
 using namespace std;
+using namespace cv;
 using namespace auto_aim;
 
 std::atomic<bool> detect_color = false; // true for red, false for blue
@@ -289,8 +290,6 @@ void detect(int argc, char **argv)
                 SendPacket send_packet;
                 // 使用第一个 KFTracker 预测得到的状态作为发送数据
                 cv::Mat state = kf_trackers[0].kf.statePost;
-                std::cout << "state size: " << state.size << std::endl;
-                std::cout << "state: " << state << std::endl;
                 
                 // 下面根据相机内参计算对应的角度偏差，作为云台的 yaw 和 pitch 值
                 float target_x = state.at<float>(0);
@@ -337,87 +336,91 @@ void detect(int argc, char **argv)
     serial_thread.stop();
 }
 
-void calibrate()
-{
-    // 设置棋盘格的尺寸（内角点数）
-    cv::Size boardSize(8, 6); // 在此示例中，我们使用8x6的棋盘格
-
-    // 准备存储角点坐标的向量
-    vector<vector<cv::Point3f>> objectPoints; // 世界坐标系中的3D点
-    vector<vector<cv::Point2f>> imagePoints;  // 图像平面中的2D点
-
-    // 准备棋盘格角点的3D坐标
-    vector<cv::Point3f> obj;
-    for (int i = 0; i < boardSize.height; i++)
-    {
-        for (int j = 0; j < boardSize.width; j++)
-        {
-            obj.push_back(cv::Point3f(j, i, 0));
+void calibrate() {
+    // 棋盘格参数
+    Size boardSize(8, 5);        // 内部角点数（对应8x5个棋盘格）
+    float square_size = 0.027f;
+    
+    // 3D坐标生成（单位：米）
+    vector<Point3f> obj;
+    for (int i = 0; i < boardSize.height; i++) {
+        for (int j = 0; j < boardSize.width; j++) {
+            obj.emplace_back(j * square_size, i * square_size, 0);  // [1,3](@ref)
         }
     }
 
-    // 打开摄像头
+    // 图像采集
+    vector<vector<Point3f>> objectPoints;
+    vector<vector<Point2f>> imagePoints;
     HIK::Camera camera;
     camera.open();
+    
+    Mat frame;
+    int count = 0;
+    while (true) {
+        camera.cap(&frame);
+        if (frame.empty()) break;
 
-    cv::Mat frame;
-    vector<cv::Point2f> corners;
-    bool calibrationDone = false;
-
-    while (!calibrationDone)
-    {
-        camera.cap(&frame); // 从摄像头捕获一帧图像
-
-        // 查找棋盘格角点
+        // 角点检测
+        vector<Point2f> corners;
         bool found = findChessboardCorners(frame, boardSize, corners);
-        if (found)
-        {
-            cv::Mat gray;
-            cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
-            cornerSubPix(gray, corners, cv::Size(11, 11), cv::Size(-1, -1),
-                         cv::TermCriteria(cv::TermCriteria::EPS | cv::TermCriteria::MAX_ITER, 30, 0.1));
-            imagePoints.push_back(corners);
+        if (found) {
+            Mat gray;
+            cvtColor(frame, gray, COLOR_BGR2GRAY);
+            // 亚像素优化（参数优化）[1](@ref)
+            TermCriteria criteria(TermCriteria::EPS + TermCriteria::MAX_ITER, 30, 0.001);
+            cornerSubPix(gray, corners, Size(11,11), Size(-1,-1), criteria);
+            
             objectPoints.push_back(obj);
-
-            // 显示角点
-            drawChessboardCorners(frame, boardSize, cv::Mat(corners), found);
+            imagePoints.push_back(corners);
+            
+            // 可视化
+            drawChessboardCorners(frame, boardSize, corners, found);
+            putText(frame, "Captured: " + to_string(objectPoints.size()), 
+                    Point(20,40), FONT_HERSHEY_SIMPLEX, 0.8, Scalar(0,255,0), 2);
         }
 
-        cv::imshow("Calibration", frame);
-
-        // 等待按键，按下ESC键退出标定
-        char key = cv::waitKey(1000);
-        if (key == 27)
-        {
-            break;
-        }
-        // 标定至少使用了6个图像时退出
-        if (imagePoints.size() >= 6)
-        {
-            calibrationDone = true;
-        }
+        imshow("Calibration", frame);
+        char key = waitKey(30);
+        if (key == 27 || objectPoints.size() >= 30) break;  // 至少采集30张[1](@ref)
     }
+    camera.close();
 
-    camera.close(); // 释放摄像头
-
-    // 检查是否至少有一个图像成功找到了角点
-    if (imagePoints.empty())
-    {
-        cerr << "No images with chessboard corners found. Exiting." << endl;
+    // 标定验证
+    if (objectPoints.size() < 6) {
+        cerr << "Insufficient calibration images (min 6)" << endl;
         return;
     }
 
-    // 相机标定
-    cv::Mat cameraMatrix, distCoeffs;
-    vector<cv::Mat> rvecs, tvecs;
-    cv::calibrateCamera(objectPoints, imagePoints, frame.size(), cameraMatrix, distCoeffs, rvecs, tvecs);
+    // 执行标定（添加标志位优化）[1](@ref)
+    Mat cameraMatrix, distCoeffs;
+    vector<Mat> rvecs, tvecs;
+    int flags = CALIB_FIX_ASPECT_RATIO | CALIB_ZERO_TANGENT_DIST;
+    double rms = calibrateCamera(objectPoints, imagePoints, frame.size(), 
+                                cameraMatrix, distCoeffs, rvecs, tvecs, flags);
+    
+    // 保存参数[1,3](@ref)
+    FileStorage fs("calibration.yaml", FileStorage::WRITE);
+    fs << "camera_matrix" << cameraMatrix << "distortion_coefficients" << distCoeffs;
+    fs.release();
 
-    // 输出相机内参和畸变参数
-    std::cout << "Camera matrix:" << endl
-         << cameraMatrix << endl;
-    std::cout << "Distortion coefficients:" << endl
-         << distCoeffs << endl;
-    return;
+    // 重投影误差计算[1,2](@ref)
+    double total_error = 0;
+    for (size_t i=0; i<objectPoints.size(); ++i) {
+        vector<Point2f> projected_points;
+        projectPoints(objectPoints[i], rvecs[i], tvecs[i], 
+                      cameraMatrix, distCoeffs, projected_points);
+        double error = norm(imagePoints[i], projected_points, NORM_L2);
+        total_error += error*error;
+    }
+    cout << "Reprojection error: " << sqrt(total_error/objectPoints.size()) 
+         << " pixels" << endl;
+
+    // 畸变校正测试[1,6](@ref)
+    Mat undistorted;
+    undistort(frame, undistorted, cameraMatrix, distCoeffs);
+    imshow("Original vs Corrected", undistorted);
+    waitKey(0);
 }
 
 int main(int argc, char **argv)
