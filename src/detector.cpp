@@ -74,7 +74,7 @@ namespace auto_aim
                 int top = int(lty * scale);
                 int right = int(rbx * scale);
                 int bottom = int(rby * scale);
-                std::vector<int> box = { left, top, right, bottom, int(class_id), int(score) };
+                std::vector<int> box = { left, top, right, bottom, int(class_id), int(score * 100) };
                 // 将边界框存储
                 results.push_back(box);
             }

@@ -1,14 +1,15 @@
 #ifndef _PACKET_HPP_
 #define _PACKET_HPP_
 
+#include <boost/asio.hpp>
 #include <cstdint>
-#include <vector>
+#include <iomanip>
+#include <iostream>
 
 #include <crc.hpp>
 
-#pragma pack(1)
-struct SendPacket
-{
+#pragma pack(push, 1)
+struct SendPacket {
     uint8_t header = 0xA5;
     bool tracking : 1;
     uint8_t id : 3;
@@ -22,60 +23,61 @@ struct SendPacket
     uint16_t crc_checksum = 0;
 };
 
-struct ReceivePacket
-{
+struct ReceivePacket {
     uint8_t header = 0x5A;
     uint8_t detect_color : 1; // 0-red 1-blue
     bool reset_tracker : 1;
     uint8_t reserved : 6;
     uint16_t crc_checksum = 0;
 };
-#pragma pack()
+#pragma pack(pop)
 
-void float2bytes(float f, uint8_t *byte)
-{
-    memcpy(byte, &f, sizeof(float));
-}
-
-float byte2float(const uint8_t *byte)
-{
-    float f;
-    memcpy(&f, byte, sizeof(float));
-    return f;
-}
-
-int sendPacket(Serial &serial, const SendPacket &packet)
-{
-    uint8_t buffer[sizeof(SendPacket)];
-    buffer[0] = packet.header;
-    buffer[1] = packet.tracking | (packet.id << 1) | (packet.armors_num << 4) | (packet.reserved << 7);
-    float2bytes(packet.yaw, buffer + 2);
-    float2bytes(packet.pitch, buffer + 6);
-    float2bytes(packet.distance, buffer + 10);
-    buffer[sizeof(SendPacket) - 4] = packet.end;
-    buffer[sizeof(SendPacket) - 3] = packet.newline;
-    buffer[sizeof(SendPacket) - 2] = packet.crc_checksum & 0xff;
-    buffer[sizeof(SendPacket) - 1] = (packet.crc_checksum >> 8) & 0xff;
-    // Debug用
-    for (int i = 0; i < 18; i++)
-    {
-        cout << hex << setw(2) << setfill('0') << (int)buffer[i] << " ";
+// 序列化函数
+std::vector<uint8_t> serialize_packet(const SendPacket& packet) {
+    std::vector<uint8_t> buffer(sizeof(SendPacket));
+    auto* ptr = reinterpret_cast<const uint8_t*>(&packet);
+    buffer.assign(ptr, ptr + sizeof(SendPacket));
+    
+    // 计算并填充CRC校验
+    crc16::Append_CRC16_Check_Sum(buffer.data(), buffer.size());
+    
+    // 调试输出
+    std::cout << "TX Packet: ";
+    for (auto b : buffer) {
+        std::cout << std::hex << std::setw(2) << std::setfill('0') 
+                 << static_cast<int>(b) << " ";
     }
-    cout << endl;
-    // 发送数据包
-    return serial.write(reinterpret_cast<const char *>(buffer), sizeof(SendPacket));
+    std::cout << std::dec << "\n";
+    
+    return buffer;
 }
 
-void receivePacket(Serial &serial, ReceivePacket &packet)
-{
-    uint8_t buffer[sizeof(ReceivePacket)];
-    serial.read(reinterpret_cast<char *>(buffer), sizeof(ReceivePacket), 10);
+// 反序列化函数
+bool deserialize_packet(const uint8_t* data, size_t length, ReceivePacket& packet) {
+    if (length < sizeof(ReceivePacket)) return false;
+    
+    // 校验CRC
+    if (!crc16::Verify_CRC16_Check_Sum(data, sizeof(ReceivePacket))) {
+        std::cerr << "CRC check failed\n";
+        return false;
+    }
 
-    packet.header = buffer[0];
-    packet.detect_color = buffer[1] >> 7;
-    packet.reset_tracker = (buffer[1] >> 6) & 0x01;
-    packet.reserved = buffer[1] & 0x3f;
-    packet.crc_checksum = (0xffff & buffer[sizeof(ReceivePacket) - 1]) | (buffer[sizeof(ReceivePacket) - 2] << 8);
+    // 调试输出
+    std::cout << "RX Packet: ";
+    for (size_t i = 0; i < sizeof(ReceivePacket); ++i) {
+        std::cout << std::hex << std::setw(2) << std::setfill('0') 
+                 << static_cast<int>(data[i]) << " ";
+    }
+    std::cout << std::dec << "\n";
+
+    packet.header = data[0];
+    packet.detect_color = data[1] & 0x01;
+    packet.reset_tracker = (data[1] >> 1) & 0x01;
+    packet.reserved = (data[1] >> 2) & 0x3f;
+    packet.crc_checksum = (0xffff & data[sizeof(ReceivePacket) - 1]) | (data[sizeof(ReceivePacket) - 2] << 8);
+
+    memcpy(&packet, data, sizeof(ReceivePacket));
+    return true;
 }
 
 #endif

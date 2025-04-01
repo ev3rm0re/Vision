@@ -73,7 +73,10 @@
         "typeinfo": "cpp",
         "variant": "cpp",
         "*.ipp": "cpp",
-        "*.txx": "cpp"
+        "*.txx": "cpp",
+        "coroutine": "cpp",
+        "source_location": "cpp",
+        "future": "cpp"
     },
     "cmake.debugConfig": {
         "args": [

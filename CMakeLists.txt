@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.5.0)
 project(Vision VERSION 0.1.0 LANGUAGES C CXX)
+set(CMAKE_CXX_STANDARD 20)
 
 include(CTest)
 enable_testing()
@@ -10,6 +11,7 @@ find_package(yaml-cpp REQUIRED)
 
 find_library(OpenVINO_LIBRARIES NAMES libopenvino.so HINTS /usr/lib)
 find_library(YAMLCPP_LIBRARIES NAMES libyaml-cpp.so HINTS /usr/lib)
+find_library(OpenCV_LIBRARIES NAMES libopencv_world.so HINTS /usr/local/lib)
 
 include_directories(${OpenCV_INCLUDE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR}/include)
@@ -23,11 +25,13 @@ link_libraries(
     ${YAMLCPP_LIBRARIES}
 )
 
-# link_directories(/usr/lib)
-
-add_executable(Vision src/main.cpp src/camera.cpp src/detector.cpp src/number_classifier.cpp src/timestamp.cpp src/stream.cpp src/serialport.cpp src/crc.cpp)
+aux_source_directory(src DIR_SRCS)
+add_executable(${PROJECT_NAME} ${DIR_SRCS})
 
 target_link_directories(Vision PUBLIC /opt/MVS/lib)
+target_link_libraries(Vision 
+    ${OpenCV_LIBRARIES}
+)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
