@@ -230,24 +230,58 @@ namespace auto_aim
         this->camera_matrix = camera_matrix;
         this->dist_coeffs = dist_coeffs;
         // 初始化物体坐标
-        object_points = {cv::Point3f(0, 0, 0), cv::Point3f(0.055 / 2, -0.135 / 2, 0), cv::Point3f(-0.055 / 2, -0.135 / 2, 0),
-                         cv::Point3f(-0.055 / 2, 0.135 / 2, 0), cv::Point3f(0.055 / 2, 0.135 / 2, 0)}; // m为单位
+        object_points = {cv::Point3f(0, 0, 0), cv::Point3f(-0.135 / 2, -0.055 / 2, 0), cv::Point3f(-0.135 / 2, 0.055 / 2, 0),
+                         cv::Point3f(0.135 / 2, 0.055 / 2, 0), cv::Point3f(0.135 / 2, -0.055 / 2, 0)}; // m为单位
     }
 
-    vector<double> PnPSolver::solve(const Armor &armor)
+    Position PnPSolver::solve(Armor &armor, cv::Mat &frame)
     {
         // 初始化图像坐标
         image_points = {armor.center, armor.left_light.top, armor.left_light.bottom, armor.right_light.bottom, armor.right_light.top};
         // 解PnP
-        cv::solvePnP(object_points, image_points, camera_matrix, dist_coeffs, rvec, tvec);
+        cv::solvePnP(object_points, image_points, camera_matrix, dist_coeffs, rvec, tvec, false, cv::SOLVEPNP_ITERATIVE);
         // 计算距离
-        double distance = sqrt(pow(tvec.at<double>(0), 2) + pow(tvec.at<double>(1), 2) + pow(tvec.at<double>(2), 2));
-        // cout << "distance: " << distance << endl;
+        double distance = cv::norm(tvec);
         // 计算角度
         double yaw = atan2(tvec.at<double>(0), tvec.at<double>(2));
         double pitch = atan2(tvec.at<double>(1), tvec.at<double>(2));
-        // cout << "yaw: " << yaw << " pitch: " << pitch << endl;
-        vector<double> data = {armor.center.x, armor.center.y, yaw, pitch, distance};
-        return data;
+
+        double theta = cv::norm(rvec);
+        cv::Mat rvec_normalized = rvec / theta;
+        double w = cos(theta / 2);
+        double x = sin(theta / 2) * rvec_normalized.at<double>(0);
+        double y = sin(theta / 2) * rvec_normalized.at<double>(1);
+        double z = sin(theta / 2) * rvec_normalized.at<double>(2);
+
+        armor.x = tvec.at<double>(0);
+        armor.y = tvec.at<double>(1);
+        armor.z = tvec.at<double>(2);
+
+        // 计算pitch（绕X轴旋转）
+        double t0 = 2.0 * (w * x + y * z);
+        double t1 = 1.0 - 2.0 * (x * x + y * y);
+        armor.pitch = atan2(t0, t1);
+
+        // 计算yaw（绕Y轴旋转）
+        double t2 = 2.0 * (w * y - z * x);
+        t2 = std::max(std::min(t2, 1.0), -1.0); // 限制范围避免NaN
+        armor.yaw = asin(t2);
+
+        // 计算roll（绕Z轴旋转）
+        double t3 = 2.0 * (w * z + x * y);
+        double t4 = 1.0 - 2.0 * (y * y + z * z);
+        armor.roll = atan2(t3, t4);
+
+        // std::cout << "armor_x: " << armor.x << " armor_y: " << armor.y << " armor_z: " << armor.z << std::endl;
+        // std::cout << "armor_pitch: " << armor.pitch << " armor_yaw: " << armor.yaw << " armor_roll: " << armor.roll << std::endl;
+
+        // const float axis_length = 0.1;
+        // cv::drawFrameAxes(frame, camera_matrix, dist_coeffs, rvec, tvec, axis_length, 2);
+
+        Position position;
+        position.yaw = yaw;
+        position.pitch = pitch;
+        position.distance = distance;
+        return position;
     }
 }

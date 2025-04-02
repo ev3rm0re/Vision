@@ -16,14 +16,18 @@ public:
 
     SerialThread(const std::string& port, uint baud_rate)
         : io_ctx_(), serial_port_(io_ctx_), running_(false) {
-        try {
-            serial_port_.open(port);
-            serial_port_.set_option(boost::asio::serial_port::baud_rate(baud_rate));
-            serial_port_.set_option(boost::asio::serial_port::character_size(8));
-            serial_port_.set_option(boost::asio::serial_port::parity(boost::asio::serial_port::parity::none));
-            serial_port_.set_option(boost::asio::serial_port::stop_bits(boost::asio::serial_port::stop_bits::one));
-        } catch (const std::exception& e) {
-            throw std::runtime_error("Failed to open serial port: " + std::string(e.what()));
+        while (true) {
+            try {
+                serial_port_.open(port);
+                serial_port_.set_option(boost::asio::serial_port::baud_rate(baud_rate));
+                serial_port_.set_option(boost::asio::serial_port::character_size(8));
+                serial_port_.set_option(boost::asio::serial_port::parity(boost::asio::serial_port::parity::none));
+                serial_port_.set_option(boost::asio::serial_port::stop_bits(boost::asio::serial_port::stop_bits::one));
+                break;
+            } catch (const std::exception& e) {
+                std::cerr << "Failed to open serial port: " + std::string(e.what()) << ". Retrying in 1 second..." << std::endl;
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
         }
     }
 

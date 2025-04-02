@@ -77,15 +77,5 @@
         "coroutine": "cpp",
         "source_location": "cpp",
         "future": "cpp"
-    },
-    "cmake.debugConfig": {
-        "args": [
-            "detect",
-            "../models/yolov10n_e10.xml",
-            "../models/yolov10n_e10.bin",
-            "../config/camera_matrix.yaml",
-            "../models/mlp.onnx",
-            "../models/label.txt"
-        ]
     }
 }

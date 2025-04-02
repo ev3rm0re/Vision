@@ -71,9 +71,22 @@ namespace auto_aim
         std::string number;
         float confidence = 0.0;
         float yolo_confidence = 0.0;
-        float distance = 0.0;
+        double yaw = 0.0;
+        double pitch = 0.0;
+        double roll = 0.0;
+        double x = 0.0;
+        double y = 0.0;
+        double z = 0.0;
         std::string classfication_result;
         std::string color;
+        int id = -1;
+    };
+
+    struct Position
+    {
+        double yaw = 0.0;
+        double pitch = 0.0;
+        double distance = 0.0;
     };
 }
 

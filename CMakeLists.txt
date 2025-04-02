@@ -8,6 +8,7 @@ enable_testing()
 find_package(OpenVINO REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 find_library(OpenVINO_LIBRARIES NAMES libopenvino.so HINTS /usr/lib)
 find_library(YAMLCPP_LIBRARIES NAMES libyaml-cpp.so HINTS /usr/lib)
@@ -17,6 +18,7 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(/opt/MVS/include)
 include_directories(/usr/include/yaml-cpp)
+include_directories(/usr/include/eigen3)
 
 link_libraries(
     /opt/MVS/lib/64/libMvCameraControl.so

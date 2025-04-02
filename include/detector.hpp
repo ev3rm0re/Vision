@@ -57,10 +57,9 @@ namespace auto_aim
         cv::Mat dist_coeffs;
         cv::Mat rvec;
         cv::Mat tvec;
-        cv::Mat rmat;
         vector<cv::Point3f> object_points;
         vector<cv::Point2f> image_points;
-        vector<double> solve(const Armor &armor);
+        Position solve(Armor &armor, cv::Mat &frame);
     };
 
 }

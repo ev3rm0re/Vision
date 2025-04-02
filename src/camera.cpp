@@ -91,14 +91,14 @@ namespace HIK
             return false;
         }
         // 设置曝光时间
-        nRet = MV_CC_SetFloatValue(handle, "ExposureTime", 2000);
+        nRet = MV_CC_SetFloatValue(handle, "ExposureTime", 1000);
         if (MV_OK != nRet)
         {
             std::cerr << "MV_CC_SetFloatValue fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
             return false;
         }
         // 设置增益
-        nRet = MV_CC_SetFloatValue(handle, "Gain", 8.0);
+        nRet = MV_CC_SetFloatValue(handle, "Gain", 16.0);
         if (MV_OK != nRet)
         {
             std::cerr << "MV_CC_SetFloatValue fail! nRet [0x" << std::hex << nRet << "]" << std::endl;

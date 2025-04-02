@@ -1,0 +1,14 @@
+serial:
+  port: "/dev/ttyUSB0"
+  baudrate: 115200
+
+yolo:
+  xml_path: "../models/yolov10n_e10.xml"
+  bin_path: "../models/yolov10n_e10.bin"
+
+camera:
+  matrix_path: "../config/camera_matrix.yaml"
+
+number_classifier:
+    model_path: "../models/mlp.onnx"
+    label_path: "../models/label.txt"
