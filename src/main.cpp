@@ -210,9 +210,6 @@ void detect() {
                 cv::arrowedLine(frame, cv::Point(filtered_x, filtered_y), arrow_end, cv::Scalar(255, 255, 255), 2);
                 cv::putText(frame, "Tracking Target", cv::Point(50, 50), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 255, 255), 2);
 
-                // 显示调试信息
-                cv::putText(frame, "Tracking Target", cv::Point(50, 50), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 255, 255), 2);
-
                 double view_angle = abs(position.yaw - last_position.yaw);
                 double rotation_angle = abs(armor.yaw - last_armor.yaw);
 
