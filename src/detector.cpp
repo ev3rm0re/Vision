@@ -275,8 +275,8 @@ namespace auto_aim
         // std::cout << "armor_x: " << armor.x << " armor_y: " << armor.y << " armor_z: " << armor.z << std::endl;
         // std::cout << "armor_pitch: " << armor.pitch << " armor_yaw: " << armor.yaw << " armor_roll: " << armor.roll << std::endl;
 
-        // const float axis_length = 0.1;
-        // cv::drawFrameAxes(frame, camera_matrix, dist_coeffs, rvec, tvec, axis_length, 2);
+        const float axis_length = 0.2;
+        cv::drawFrameAxes(frame, camera_matrix, dist_coeffs, rvec, tvec, axis_length, 2);
 
         Position position;
         position.yaw = yaw;

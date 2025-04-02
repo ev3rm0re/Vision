@@ -166,7 +166,7 @@ void detect() {
                 // 如果轨迹非空，则获取最后一个轨迹点
                 if (!id_trajectory[armor.id].empty()) {
                     cv::Point2f last_traj_point = id_trajectory[armor.id].back();
-                    if (cv::norm(last_traj_point - current_point) > 20) { 
+                    if (cv::norm(last_traj_point - current_point) > 25) {
                         int old_id = armor.id;
                         int new_id = generate_new_id();
                         armor.id = new_id;
@@ -213,8 +213,7 @@ void detect() {
                 double view_angle = abs(position.yaw - last_position.yaw);
                 double rotation_angle = abs(armor.yaw - last_armor.yaw);
 
-                if (last_armor.confidence != 0.0 && last_position.yaw != 0.0
-                    && rotation_angle < 0.4 && rotation_angle > 0.25) {
+                if (last_armor.id == armor.id && rotation_angle < 0.3 && rotation_angle > 0.1) {
                     double last_d = sqrt(pow(last_armor.x, 2) + pow(last_armor.z, 2));
                     double current_d = sqrt(pow(armor.x, 2) + pow(armor.z, 2));
 
