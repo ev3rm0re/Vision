@@ -13,6 +13,7 @@
 #include <packet.hpp>
 #include <crc.hpp>
 #include <ekf.hpp>
+#include <predictor.hpp>
 
 #include <chrono>
 #include <yaml-cpp/yaml.h>
@@ -20,7 +21,6 @@
 
 using namespace std;
 using namespace cv;
-using namespace auto_aim;
 
 std::atomic<bool> detect_color = false; // true for red, false for blue
 std::map<int, Armor> tracked_armors;
@@ -112,13 +112,18 @@ void detect() {
     // 打开摄像头
     bool isopened = camera.open();
     Armor last_armor;
-    Position last_position;
 
     EKFTracker ekf;
     bool ekf_initialized = false;
+    auto last_timestamp = chrono::high_resolution_clock::now();
+
+    const double theta = 2.0 * CV_PI / 4.0;
+
+    Predictor predictor;
 
     while (true) {
         auto start = chrono::high_resolution_clock::now();
+
         if (camera.cap(&frame) != true) {
             camera.close();
             cerr << "Failed to capture frame" << endl;
@@ -129,6 +134,8 @@ void detect() {
                 sleep(1);
             }
         }
+        auto timestamp = chrono::high_resolution_clock::now();
+        auto duration = chrono::duration_cast<chrono::microseconds>(timestamp - last_timestamp).count() / 1e6;
         
         if (frame.empty()) break;
         ov::Tensor output = det.get()->infer(frame);
@@ -145,16 +152,19 @@ void detect() {
             Armor armor = armors[0];
 
             if (armor.color == (detect_color.load() ? "red" : "blue")) {
-                Position position = pnp_solver.solve(armor, frame);
+                vector<cv::Mat> vec = pnp_solver.solve(armor);
+                predictor.getAttr(vec, armor);
+                double yaw = atan2(armor.x, armor.z);
+                double pitch = atan2(armor.y, armor.z);
 
                 if (!ekf_initialized) {
-                    ekf.init(armor.center.x, armor.center.y, armor.z, position.yaw, position.pitch, 1.0 / 80.0); // 假设 dt=0.1s
+                    ekf.init(armor.center.x, armor.center.y, armor.z, yaw, pitch, 1.0 / 80.0); 
                     ekf_initialized = true;
                 } else {
                     ekf.predict(1.0 / 80.0);
-                    ekf.update(armor.center.x, armor.center.y, armor.z, position.yaw, position.pitch);
+                    ekf.update(armor.center.x, armor.center.y, armor.z, yaw, pitch);
                 }
-        
+
                 cv::Mat ekf_state = ekf.getState();
                 double filtered_x = ekf_state.at<double>(0, 0);
                 double filtered_y = ekf_state.at<double>(1, 0);
@@ -166,7 +176,7 @@ void detect() {
                 // 如果轨迹非空，则获取最后一个轨迹点
                 if (!id_trajectory[armor.id].empty()) {
                     cv::Point2f last_traj_point = id_trajectory[armor.id].back();
-                    if (cv::norm(last_traj_point - current_point) > 25) {
+                    if (cv::norm(last_traj_point - current_point) > 10) {
                         int old_id = armor.id;
                         int new_id = generate_new_id();
                         armor.id = new_id;
@@ -206,45 +216,66 @@ void detect() {
                 double vx = ekf_state.at<double>(3, 0);
                 double vy = ekf_state.at<double>(4, 0);
                 double angle = atan2(vy, vx);
-                cv::Point2f arrow_end(filtered_x + 100 * cos(angle), filtered_y + 100 * sin(angle));
+                cv::Point2f arrow_end(filtered_x + 30 * cos(angle), filtered_y + 30 * sin(angle));
                 cv::arrowedLine(frame, cv::Point(filtered_x, filtered_y), arrow_end, cv::Scalar(255, 255, 255), 2);
                 cv::putText(frame, "Tracking Target", cv::Point(50, 50), cv::FONT_HERSHEY_SIMPLEX, 0.7, cv::Scalar(255, 255, 255), 2);
 
-                double view_angle = abs(position.yaw - last_position.yaw);
-                double rotation_angle = abs(armor.yaw - last_armor.yaw);
-
-                if (last_armor.id == armor.id && rotation_angle < 0.3 && rotation_angle > 0.1) {
-                    double last_d = sqrt(pow(last_armor.x, 2) + pow(last_armor.z, 2));
-                    double current_d = sqrt(pow(armor.x, 2) + pow(armor.z, 2));
-
-                    double rotation_radius = sqrt((pow(last_d, 2) + pow(current_d, 2) - 2 * last_d * current_d * cos(view_angle)) / (2 - 2 * cos(rotation_angle)));
-                    double camera_to_center = sqrt(pow(position.distance, 2) + pow(rotation_radius, 2) - 2 * position.distance * rotation_radius * cos(CV_PI - armor.yaw - position.yaw));
-                    camera_to_center = sqrt(pow(camera_to_center, 2) - pow(armor.y, 2));
-                    double error = (camera_to_center - position.distance) / position.distance;
-                    if (error < 0.1) {
-                        std::cout << "rotation angle: " << rotation_angle << " rotation radius: " << rotation_radius << " camera to center: " << camera_to_center << std::endl;
-                    }
+                if (last_armor.id == armor.id) {
+                    double aim_yaw, aim_pitch;
+                    bool success = predictor.calculate(last_armor, armor, duration);
+                    if (success) predictor.predict(aim_yaw, aim_pitch);
                 }
+
+                // double view_angle = abs(position.yaw - last_position.yaw);
+                // double rotation_angle = abs(armor.yaw - last_armor.yaw);
+
+                // if (last_armor.id == armor.id) {
+                //     double last_d = sqrt(pow(last_armor.x, 2) + pow(last_armor.z, 2));
+                //     double current_d = sqrt(pow(armor.x, 2) + pow(armor.z, 2));
+
+                //     double rotation_radius = sqrt((pow(last_d, 2) + pow(current_d, 2) - 2 * last_d * current_d * cos(view_angle)) / (2 - 2 * cos(rotation_angle)));
+                //     double camera_to_center_distance = sqrt(pow(position.distance, 2) + pow(rotation_radius, 2) - 2 * position.distance * rotation_radius * cos(CV_PI - armor.yaw - position.yaw));
+                //     double angular_velocity = rotation_angle / duration;
+                //     camera_to_center_distance = sqrt(pow(camera_to_center_distance, 2) - pow(armor.y, 2));
+                //     double camera_to_center_angle = asin(armor.z * sin(position.yaw) / camera_to_center_distance);
+                //     double error = (camera_to_center_distance - position.distance) / position.distance;
+                //     std::cout << "angular velocity: " << angular_velocity << std::endl;
+
+                //     // TODO: 计算旋转速度，根据旋转速度预测背面装甲板到达正面时间，发送击打数据
+                //     double t_bullet = camera_to_center_distance / 20.0;
+                //     double target_armor_angle = fmod(armor.yaw - 2 * theta, CV_PI / 2);
+                    
+                //     double delta_theta = angular_velocity * t_bullet;
+                //     std::cout << "delta theta: " << delta_theta << std::endl;
+
+                //     double predicted_armor_angle = fmod(target_armor_angle + delta_theta, CV_PI * 2);
+                //     std::cout << "predicted armor angle: " << predicted_armor_angle << std::endl;
+                //     std::cout << "current armor angle: " << armor.yaw << std::endl;
+                    
+                //     double predicted_angle = atan(rotation_radius * sin(abs(position.yaw - predicted_armor_angle)) / (camera_to_center_distance - rotation_radius * cos(abs(position.yaw - predicted_armor_angle)))) + position.yaw;
+                //     std::cout << "predicted angle: " << predicted_angle << " current angle: " << position.yaw << std::endl;
+
+                //     if (serial_ready) {
+                //         send_packet.yaw = predicted_angle;
+                //         send_packet.pitch = position.pitch;
+                //         send_packet.distance = position.distance;
+                            
+                //         send_packet.tracking = false;
+                //         send_packet.id = id_unit8_map.at(armor.number);
+                //         send_packet.armors_num = 4;
+                //         send_packet.reserved = 0;
+                //         serial_thread.send_packet(send_packet);
+                //     }
+                // }
 
                 line(frame, armor.left_light.top, armor.right_light.bottom, cv::Scalar(0, 255, 0), 2);
                 line(frame, armor.left_light.bottom, armor.right_light.top, cv::Scalar(0, 255, 0), 2);
+                putText(frame, "armor yaw: " + to_string(armor.yaw).substr(0, 5), armor.right_light.top + cv::Point2f(5, -40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
                 putText(frame, armor.classfication_result, armor.right_light.top + cv::Point2f(5, -20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
                 putText(frame, "yolo conf: " + to_string(armor.yolo_confidence).substr(0, 2) + "%", armor.right_light.center + cv::Point2f(5, 0), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
-                putText(frame, "distance: " + to_string(position.distance).substr(0, 4) + "M", armor.right_light.bottom + cv::Point2f(5, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
-
-                if (serial_ready) {
-                    send_packet.yaw = position.yaw;
-                    send_packet.pitch = position.pitch;
-                    send_packet.distance = position.distance;
-                        
-                    send_packet.tracking = false;
-                    send_packet.id = id_unit8_map.at(armor.number);
-                    send_packet.armors_num = 4;
-                    send_packet.reserved = 0;
-                    serial_thread.send_packet(send_packet);
-                }
+                putText(frame, "distance: " + to_string(armor.z).substr(0, 3), armor.right_light.center + cv::Point2f(5, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
                 last_armor = armor;
-                last_position = position;
+                last_timestamp = timestamp;
             }
         }
 
@@ -252,7 +283,6 @@ void detect() {
         double fps = 1e9 / chrono::duration_cast<chrono::nanoseconds>(end - start).count();
         putText(frame, "FPS: " + to_string(fps).substr(0, 5), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
 
-        cv::imwrite("frame.jpg", frame);
         cv::imshow("frame", frame);
         if (cv::waitKey(1) == 27) break;
     }

@@ -90,6 +90,15 @@ namespace HIK
             std::cerr << "MV_CC_SetEnumValue fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
             return false;
         }
+
+        // 设置帧率
+        nRet = MV_CC_SetFloatValue(handle, "AcquisitionFrameRate", 120);
+        if (MV_OK != nRet)
+        {
+            std::cerr << "MV_CC_SetFloatValue fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
+            return false;
+        }
+
         // 设置曝光时间
         nRet = MV_CC_SetFloatValue(handle, "ExposureTime", 1000);
         if (MV_OK != nRet)

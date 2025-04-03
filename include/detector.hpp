@@ -18,49 +18,46 @@ PnPSolver: 通过PnP解算器求解装甲板的位置
 
 using namespace std;
 
-namespace auto_aim
+class YoloDet
 {
-    class YoloDet
-    {
-    public:
-        YoloDet(const string &xml_path, const string &bin_path);
-        vector<cv::Scalar> colors = {cv::Scalar(0, 0, 255), cv::Scalar(0, 255, 0), cv::Scalar(255, 0, 0),
+public:
+    YoloDet(const string &xml_path, const string &bin_path);
+    vector<cv::Scalar> colors = {cv::Scalar(0, 0, 255), cv::Scalar(0, 255, 0), cv::Scalar(255, 0, 0),
                                  cv::Scalar(255, 100, 50), cv::Scalar(50, 100, 255), cv::Scalar(255, 50, 100)};
-        const vector<string> class_names = {"red", "blue"};
-        ov::Core core = ov::Core();
-        shared_ptr<ov::Model> model;
-        ov::CompiledModel compiled_model;
-        ov::InferRequest infer_request;
-        float scale;
+    const vector<string> class_names = {"red", "blue"};
+    ov::Core core = ov::Core();
+    shared_ptr<ov::Model> model;
+    ov::CompiledModel compiled_model;
+    ov::InferRequest infer_request;
+    float scale;
 
-        cv::Mat letterbox(const cv::Mat &source);
+    cv::Mat letterbox(const cv::Mat &source);
 
-        ov::Tensor infer(const cv::Mat &image);
-        vector<vector<int>> postprocess(const ov::Tensor &output, const float &score_threshold);
-    };
+    ov::Tensor infer(const cv::Mat &image);
+    vector<vector<int>> postprocess(const ov::Tensor &output, const float &score_threshold);
+};
 
-    class ArmorDet
-    {
-    public:
-        vector<Armor> detect(const vector<vector<int>> &boxes, const cv::Mat &image);
-        vector<Light> find_lights(const cv::Mat &roi_image, const cv::Point2f &roi_tl);
-        bool is_light(const Light &light);
-        vector<Armor> match_lights(const vector<Light> &lights, vector<int> &results);
-        ArmorType is_armor(const Light &light1, const Light &light2);
-    };
+class ArmorDet
+{
+public:
+    vector<Armor> detect(const vector<vector<int>> &boxes, const cv::Mat &image);
+    vector<Light> find_lights(const cv::Mat &roi_image, const cv::Point2f &roi_tl);
+    bool is_light(const Light &light);
+    vector<Armor> match_lights(const vector<Light> &lights, vector<int> &results);
+    ArmorType is_armor(const Light &light1, const Light &light2);
+};
 
-    class PnPSolver
-    {
-    public:
-        PnPSolver(const cv::Mat &camera_matrix, const cv::Mat &dist_coeffs);
-        cv::Mat camera_matrix;
-        cv::Mat dist_coeffs;
-        cv::Mat rvec;
-        cv::Mat tvec;
-        vector<cv::Point3f> object_points;
-        vector<cv::Point2f> image_points;
-        Position solve(Armor &armor, cv::Mat &frame);
-    };
+class PnPSolver
+{
+public:
+    PnPSolver(const cv::Mat &camera_matrix, const cv::Mat &dist_coeffs);
+    cv::Mat camera_matrix;
+    cv::Mat dist_coeffs;
+    cv::Mat rvec;
+    cv::Mat tvec;
+    vector<cv::Point3f> object_points;
+    vector<cv::Point2f> image_points;
+    vector<cv::Mat> solve(Armor &armor);
+};
 
-}
 #endif
