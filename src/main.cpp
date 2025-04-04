@@ -14,6 +14,7 @@
 #include <crc.hpp>
 #include <ekf.hpp>
 #include <predictor.hpp>
+#include <calibrate.hpp>
 
 #include <chrono>
 #include <yaml-cpp/yaml.h>
@@ -84,11 +85,11 @@ void detect() {
         sleep(1);
     }
     YAML::Node config = YAML::LoadFile(camera_matrix_path);
-    vector<float> camera_vector = config["Camera matrix"].as<vector<float>>();
-    vector<float> distortion_coefficients_vector = config["Distortion coefficients"].as<vector<float>>();
+    vector<double> camera_vector = config["Camera matrix"].as<vector<double>>();
+    vector<double> distortion_coefficients_vector = config["Distortion coefficients"].as<vector<double>>();
 
-    cv::Mat camera_matrix = cv::Mat(3, 3, CV_32F, camera_vector.data());
-    cv::Mat distortion_coefficients = cv::Mat(1, 5, CV_32F, distortion_coefficients_vector.data());
+    cv::Mat camera_matrix = cv::Mat(3, 3, CV_64F, camera_vector.data());
+    cv::Mat distortion_coefficients = cv::Mat(1, 5, CV_64F, distortion_coefficients_vector.data());
 
     PnPSolver pnp_solver(camera_matrix, distortion_coefficients);
 
@@ -223,51 +224,22 @@ void detect() {
                 if (last_armor.id == armor.id) {
                     double aim_yaw, aim_pitch;
                     bool success = predictor.calculate(last_armor, armor, duration);
-                    if (success) predictor.predict(aim_yaw, aim_pitch);
-                }
-
-                // double view_angle = abs(position.yaw - last_position.yaw);
-                // double rotation_angle = abs(armor.yaw - last_armor.yaw);
-
-                // if (last_armor.id == armor.id) {
-                //     double last_d = sqrt(pow(last_armor.x, 2) + pow(last_armor.z, 2));
-                //     double current_d = sqrt(pow(armor.x, 2) + pow(armor.z, 2));
-
-                //     double rotation_radius = sqrt((pow(last_d, 2) + pow(current_d, 2) - 2 * last_d * current_d * cos(view_angle)) / (2 - 2 * cos(rotation_angle)));
-                //     double camera_to_center_distance = sqrt(pow(position.distance, 2) + pow(rotation_radius, 2) - 2 * position.distance * rotation_radius * cos(CV_PI - armor.yaw - position.yaw));
-                //     double angular_velocity = rotation_angle / duration;
-                //     camera_to_center_distance = sqrt(pow(camera_to_center_distance, 2) - pow(armor.y, 2));
-                //     double camera_to_center_angle = asin(armor.z * sin(position.yaw) / camera_to_center_distance);
-                //     double error = (camera_to_center_distance - position.distance) / position.distance;
-                //     std::cout << "angular velocity: " << angular_velocity << std::endl;
-
-                //     // TODO: 计算旋转速度，根据旋转速度预测背面装甲板到达正面时间，发送击打数据
-                //     double t_bullet = camera_to_center_distance / 20.0;
-                //     double target_armor_angle = fmod(armor.yaw - 2 * theta, CV_PI / 2);
-                    
-                //     double delta_theta = angular_velocity * t_bullet;
-                //     std::cout << "delta theta: " << delta_theta << std::endl;
-
-                //     double predicted_armor_angle = fmod(target_armor_angle + delta_theta, CV_PI * 2);
-                //     std::cout << "predicted armor angle: " << predicted_armor_angle << std::endl;
-                //     std::cout << "current armor angle: " << armor.yaw << std::endl;
-                    
-                //     double predicted_angle = atan(rotation_radius * sin(abs(position.yaw - predicted_armor_angle)) / (camera_to_center_distance - rotation_radius * cos(abs(position.yaw - predicted_armor_angle)))) + position.yaw;
-                //     std::cout << "predicted angle: " << predicted_angle << " current angle: " << position.yaw << std::endl;
-
-                //     if (serial_ready) {
-                //         send_packet.yaw = predicted_angle;
-                //         send_packet.pitch = position.pitch;
-                //         send_packet.distance = position.distance;
+                    if (success) {
+                        predictor.predict(aim_yaw, aim_pitch);
+                        predictor.drawPrediction(camera_matrix, frame);
+                        if (serial_ready) {
+                            send_packet.yaw = aim_yaw;
+                            send_packet.pitch = aim_pitch;
                             
-                //         send_packet.tracking = false;
-                //         send_packet.id = id_unit8_map.at(armor.number);
-                //         send_packet.armors_num = 4;
-                //         send_packet.reserved = 0;
-                //         serial_thread.send_packet(send_packet);
-                //     }
-                // }
-
+                            send_packet.tracking = false;
+                            send_packet.id = id_unit8_map.at(armor.number);
+                            send_packet.armors_num = 4;
+                            send_packet.reserved = 0;
+                            serial_thread.send_packet(send_packet);
+                        }
+                    }
+                }
+                
                 line(frame, armor.left_light.top, armor.right_light.bottom, cv::Scalar(0, 255, 0), 2);
                 line(frame, armor.left_light.bottom, armor.right_light.top, cv::Scalar(0, 255, 0), 2);
                 putText(frame, "armor yaw: " + to_string(armor.yaw).substr(0, 5), armor.right_light.top + cv::Point2f(5, -40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);

@@ -12,10 +12,13 @@ class Predictor {
         void getAttr(std::vector<cv::Mat> &vec, Armor& armor);
         bool calculate(Armor& last_armor, Armor& armor, double interval);
         bool predict(double& aim_yaw, double& aim_pitch);
+        void drawPrediction(const cv::Mat &camera_matrix, cv::Mat &frame);
         double v = 23.0;
         double omega;
-        double x;
-        double z;
+        double x0;
+        double z0;
+        double x1;
+        double z1;
     private:
         double alpha0;
         double alpha1;
@@ -25,20 +28,23 @@ class Predictor {
         double d1;
         double r;
         double dc;
+        double t_solution;
 };
 
 // 定义一个结构体，用于封装方程 f(t)=0
 struct Equation {
-    double x, z, r, d1, v, alpha1, beta1, omega;
+    double x0, x1, z0, z1, r, v, beta0, beta1, omega;
 
-    Equation(double x_, double z_, double r_, double d_, double v_, double alpha_, double beta_, double omega_)
-        : x(x_), z(z_), r(r_), d1(d_), v(v_), alpha1(alpha_), beta1(beta_), omega(omega_) {}
-
+    Equation(double x0, double x1, double z0, double z1, double r, double v, double beta0, double beta1, double omega)
+        : x0(x0), x1(x1), z0(z0), z1(z1), r(r), v(v), beta0(beta0), beta1(beta1), omega(omega) {}
     // 定义函数运算符，计算 f(t)
     double operator()(double t) const {
-        double lhs = acos((v * v * t * t - d1 * d1 + 2 * d1 * r * cos(CV_PI - beta1 + alpha1)) / (2 * r * v * t)) - beta1 - omega * t;
+        double lhs = v * v * t * t;
 
-        double rhs = atan2((x + r * sin(beta1) + r * cos(omega * t - CV_PI / 2 + beta1)), (z + r * cos(beta1) - r * sin(omega * t - CV_PI / 2 + beta1)));
+        double xt = ((x1 + r * sin(beta1) - r * sin(CV_PI / 2 - beta1 - omega * t)) + (x0 + r * sin(beta0) - r * sin(CV_PI / 2 - beta1 - omega * t))) / 2.0;
+        double zt = ((z1 + r * cos(beta1) - r * cos(CV_PI / 2 - beta1 - omega * t)) + (z0 + r * cos(beta0) - r * cos(CV_PI / 2 - beta1 - omega * t))) / 2.0;
+
+        double rhs = xt * xt + zt * zt;
         return lhs - rhs;
     }
 };

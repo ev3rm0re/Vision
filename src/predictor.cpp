@@ -19,8 +19,10 @@ bool Predictor::calculate(Armor& last_armor, Armor& armor, double interval) {
     beta0 = last_armor.yaw;
     beta1 = armor.yaw;
 
-    x = armor.x;
-    z = armor.z;
+    x0 = last_armor.x;
+    x1 = armor.x;
+    z0 = last_armor.z;
+    z1 = armor.z;
 
     double delta_theta = beta1 - beta0;
     omega = delta_theta / interval;
@@ -38,29 +40,38 @@ bool Predictor::calculate(Armor& last_armor, Armor& armor, double interval) {
     std::cout << "last_armor.x: " << last_armor.x << " last_armor.z: " << last_armor.z << " d0: " << d0 << std::endl;
     std::cout << "armor.x: " << armor.x << " armor.z: " << armor.z << " d1: " << d1 << std::endl;
     std::cout << "r: " << r << " dc: " << dc << std::endl;
+    std::cout << "armor current yaw: " << alpha1 + CV_PI / 4.0 << std::endl;
     return true;
 }
 
 bool Predictor::predict(double& aim_yaw, double& aim_pitch) {
-    Equation f(x, z, r, d1, v, alpha1, beta1, omega);
+    Equation f(x0, x1, z0, z1, r, v, beta0, beta1, omega);
     double t_lower = 1e-2;
     double t_upper = 1.0;
 
-    boost::uintmax_t max_iter = 500;
+    boost::uintmax_t max_iter = 100;
     try {
         auto result = boost::math::tools::bisect(f, t_lower, t_upper, boost::math::tools::eps_tolerance<double>(5), max_iter);
-        double t_solution = (result.first + result.second) / 2.0;
+        t_solution = (result.first + result.second) / 2.0;
         std::cout << "t_solution: " << t_solution << std::endl;
 
         double d2 = v * t_solution;
-        double temp = (d2 * d2 - d1 * d1 - 2 * d1 * r * cos(CV_PI - beta1 + alpha1)) / (2 * r * d2);
-        if (temp > 1 || temp < -1) return false;
-        aim_yaw = acos(temp) - beta1 - omega * t_solution;
-        std::cout << "aim_yaw: " << aim_yaw << std::endl;
+        double xt = ((x1 + r * sin(beta1) - r * sin(CV_PI / 2 - beta1 - omega * t_solution)) + (x0 + r * sin(beta0) - r * sin(CV_PI / 2 - beta1 - omega * t_solution))) / 2.0;
+        double zt = ((z1 + r * cos(beta1) - r * cos(CV_PI / 2 - beta1 - omega * t_solution)) + (z0 + r * cos(beta0) - r * cos(CV_PI / 2 - beta1 - omega * t_solution))) / 2.0;
+        aim_yaw = atan2(xt, zt);
+        std::cout << "aim_yaw: " << aim_yaw << std::endl; // 相机下一次击打点的yaw
     } catch (std::exception& e) {
         std::cerr << e.what() << std::endl;
         return false;
     }
     
     return true;
+}
+
+void Predictor::drawPrediction(const cv::Mat &camera_matrix, cv::Mat &frame) {
+    double xt = ((x1 + r * sin(beta1) - r * sin(CV_PI / 2 - beta1 - omega * t_solution)) + (x0 + r * sin(beta0) - r * sin(CV_PI / 2 - beta1 - omega * t_solution))) / 2.0;
+    double zt = ((z1 + r * cos(beta1) - r * cos(CV_PI / 2 - beta1 - omega * t_solution)) + (z0 + r * cos(beta0) - r * cos(CV_PI / 2 - beta1 - omega * t_solution))) / 2.0;
+    double u = camera_matrix.at<double>(0, 0) * xt / zt + camera_matrix.at<double>(0, 2);
+    std::cout << "u: " << u << std::endl;
+    cv::circle(frame, cv::Point(u, camera_matrix.at<double>(1, 2)), 10, cv::Scalar(0, 0, 255), -1);
 }

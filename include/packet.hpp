@@ -42,12 +42,12 @@ std::vector<uint8_t> serialize_packet(const SendPacket& packet) {
     crc16::Append_CRC16_Check_Sum(buffer.data(), buffer.size());
     
     // 调试输出
-    // std::cout << "TX Packet: ";
-    // for (auto b : buffer) {
-    //     std::cout << std::hex << std::setw(2) << std::setfill('0') 
-    //              << static_cast<int>(b) << " ";
-    // }
-    // std::cout << std::dec << "\n";
+    std::cout << "TX Packet: ";
+    for (auto b : buffer) {
+        std::cout << std::hex << std::setw(2) << std::setfill('0') 
+                 << static_cast<int>(b) << " ";
+    }
+    std::cout << std::dec << "\n";
     
     return buffer;
 }

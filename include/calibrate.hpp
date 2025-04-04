@@ -50,8 +50,8 @@ void calibrate() {
         }
 
         imshow("Calibration", frame);
-        char key = waitKey(30);
-        if (key == 27 || objectPoints.size() >= 30) break;  // 至少采集30张[1](@ref)
+        char key = waitKey(200);
+        if (key == 27 || objectPoints.size() >= 60) break;  // 至少采集30张[1](@ref)
     }
     camera.close();
 
