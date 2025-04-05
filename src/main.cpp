@@ -46,6 +46,8 @@ void detect() {
     std::string yolo_bin_path = params["yolo"]["bin_path"].as<std::string>();
 
     std::string camera_matrix_path = params["camera"]["matrix_path"].as<std::string>();
+    float exposureTime = params["camera"]["exposure_time"].as<float>();
+    float gain = params["camera"]["gain"].as<float>();
 
     std::string number_classifier_model_path = params["number_classifier"]["model_path"].as<std::string>();
     std::string number_classifier_label_path = params["number_classifier"]["label_path"].as<std::string>();
@@ -77,7 +79,7 @@ void detect() {
     unique_ptr<ArmorDet> armor_det = make_unique<ArmorDet>();
 
     // 相机
-    HIK::Camera camera;
+    HIK::Camera camera(exposureTime, gain);
 
     // 根据相机内参和畸变参数实例化PnP解算器
     while (access(camera_matrix_path.c_str(), F_OK) == -1) {
@@ -129,8 +131,7 @@ void detect() {
             camera.close();
             cerr << "Failed to capture frame" << endl;
             cerr << "reopening camera" << endl;
-            while (!camera.open())
-            {
+            while (!camera.open()) {
                 cerr << "Failed to reopen camera" << endl;
                 sleep(1);
             }

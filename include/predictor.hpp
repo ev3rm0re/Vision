@@ -13,13 +13,14 @@ class Predictor {
         bool calculate(Armor& last_armor, Armor& armor, double interval);
         bool predict(double& aim_yaw, double& aim_pitch);
         void drawPrediction(const cv::Mat &camera_matrix, cv::Mat &frame);
+        
+    private:
         double v = 23.0;
         double omega;
         double x0;
         double z0;
         double x1;
         double z1;
-    private:
         double alpha0;
         double alpha1;
         double beta0;

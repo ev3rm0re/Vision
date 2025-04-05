@@ -1,5 +1,5 @@
 #include <boost/math/tools/roots.hpp>
-#include "predictor.hpp"
+#include <predictor.hpp>
 
 void Predictor::getAttr(std::vector<cv::Mat> &vec, Armor& armor) {
     armor.x = vec.at(0).at<double>(0, 0);

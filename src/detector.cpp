@@ -4,27 +4,18 @@
 2. ArmorDet：装甲板检测器
 3. PnPSolver：PnP解算器
 */
-
-#include "detector.hpp"
-#include <openvino/openvino.hpp>
-#include <opencv2/opencv.hpp>
-#include <iostream>
-#include <vector>
-#include <time.h>
+#include <detector.hpp>
 
 using namespace std;
 
-YoloDet::YoloDet(const string &xml_path, const string &bin_path)
-{
+YoloDet::YoloDet(const string &xml_path, const string &bin_path) {
     // 初始化模型，创建推理请求
     model = core.read_model(xml_path, bin_path);
     compiled_model = core.compile_model(model, "CPU");
     infer_request = compiled_model.create_infer_request();
-    scale = 0.0;
 }
 
-cv::Mat YoloDet::letterbox(const cv::Mat &source)
-{
+cv::Mat YoloDet::letterbox(const cv::Mat &source) {
     // 将图像填充为正方形
     int col = source.cols;
     int row = source.rows;
@@ -34,8 +25,7 @@ cv::Mat YoloDet::letterbox(const cv::Mat &source)
     return result;
 }
 
-ov::Tensor YoloDet::infer(const cv::Mat &image)
-{
+ov::Tensor YoloDet::infer(const cv::Mat &image) {
     // 推理
 
     cv::Mat letterbox_image = YoloDet::letterbox(image);
@@ -49,21 +39,18 @@ ov::Tensor YoloDet::infer(const cv::Mat &image)
     return output;
 }
 
-std::vector<std::vector<int>> YoloDet::postprocess(const ov::Tensor &output, const float &score_threshold)
-{
+std::vector<std::vector<int>> YoloDet::postprocess(const ov::Tensor &output, const float &score_threshold) {
     // 后处理
     float *data = output.data<float>();                                                // 获取输出数据
     cv::Mat output_buffer(output.get_shape()[1], output.get_shape()[2], CV_32F, data); // 创建输出缓冲区
     // cv::transpose(output_buffer, output_buffer);				// 转置
     std::vector<std::vector<int>> results;
     // 遍历输出层
-    for (int i = 0; i < output_buffer.rows; i++)
-    { // 遍历每个边界框
+    for (int i = 0; i < output_buffer.rows; i++) { // 遍历每个边界框
         // 获取类别得分
         float score = output_buffer.at<float>(i, 4);
         float class_id = output_buffer.at<float>(i, 5);
-        if (score > score_threshold)
-        { // 判断是否满足阈值
+        if (score > score_threshold) { // 判断是否满足阈值
             // 获取边界框
             float ltx = output_buffer.at<float>(i, 0);
             float lty = output_buffer.at<float>(i, 1);
@@ -82,19 +69,16 @@ std::vector<std::vector<int>> YoloDet::postprocess(const ov::Tensor &output, con
     return results;
 }
 
-vector<Armor> ArmorDet::detect(const vector<vector<int>> &results, const cv::Mat &image)
-{
+vector<Armor> ArmorDet::detect(const vector<vector<int>> &results, const cv::Mat &image) {
     vector<Armor> armors;
     vector<Armor> armors_;
 
     // 遍历检测结果
-    for (vector<int> result : results)
-    {
+    for (vector<int> result : results) {
         // 获取检测结果的ROI
         cv::Rect roi = cv::Rect(result[0], result[1], result[2] - result[0], result[3] - result[1]);
         // 筛选掉超出图像范围的ROI
-        if (roi.x < 0 || roi.x + roi.width > image.cols || roi.y < 0 || roi.y + roi.height > image.rows || roi.height < 0 || roi.width < 0)
-        {
+        if (roi.x < 0 || roi.x + roi.width > image.cols || roi.y < 0 || roi.y + roi.height > image.rows || roi.height < 0 || roi.width < 0) {
             continue;
         }
         // 获取ROI图像
@@ -114,8 +98,7 @@ vector<Armor> ArmorDet::detect(const vector<vector<int>> &results, const cv::Mat
     return armors_;
 }
 
-vector<Light> ArmorDet::find_lights(const cv::Mat &roi_image, const cv::Point2f &roi_tl)
-{
+vector<Light> ArmorDet::find_lights(const cv::Mat &roi_image, const cv::Point2f &roi_tl) {
     vector<Light> lights;
     cv::Mat gray_image, binary_image;
     // 灰度化、高斯模糊、二值化
@@ -128,17 +111,14 @@ vector<Light> ArmorDet::find_lights(const cv::Mat &roi_image, const cv::Point2f 
     vector<cv::Vec4i> hierarchy;
     // 查找轮廓
     findContours(binary_image, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-    for (vector<cv::Point> contour : contours)
-    {
+    for (vector<cv::Point> contour : contours) {
         // 筛选掉小轮廓
-        if (contour.size() > 3 && contourArea(contour) > 20)
-        {
+        if (contour.size() > 3 && contourArea(contour) > 20) {
             // 获取最小外接矩形
             cv::RotatedRect rect = cv::minAreaRect(contour);
 
             // 判断是否为灯条
-            if (is_light(Light(rect)))
-            {
+            if (is_light(Light(rect))) {
                 cv::Point2f vertices[4];
                 rect.points(vertices);
                 // 绘制灯条最小外接矩形
@@ -146,8 +126,7 @@ vector<Light> ArmorDet::find_lights(const cv::Mat &roi_image, const cv::Point2f 
                     line(roi_image, vertices[i], vertices[(i + 1) % 4], Scalar(0, 0, 255), 2);
                 }*/
                 // 获取灯条的四个顶点真实坐标
-                for (int i = 0; i < 4; i++)
-                {
+                for (int i = 0; i < 4; i++) {
                     vertices[i].x += roi_tl.x;
                     vertices[i].y += roi_tl.y;
                 }
@@ -156,8 +135,7 @@ vector<Light> ArmorDet::find_lights(const cv::Mat &roi_image, const cv::Point2f 
             }
         }
     }
-    if (lights.size() > 2)
-    {
+    if (lights.size() > 2) {
         sort(lights.begin(), lights.end(), [](const Light &a, const Light &b)
              { return a.center.x > b.center.x; });
         // 只保留首尾灯条
@@ -166,28 +144,21 @@ vector<Light> ArmorDet::find_lights(const cv::Mat &roi_image, const cv::Point2f 
     return lights;
 }
 
-// TODO:
-bool ArmorDet::is_light(const Light &light)
-{
+bool ArmorDet::is_light(const Light &light) {
     // 筛选掉不符合条件的灯条
-    if (light.width / light.length > 0.5 || light.tilt_angle > 45)
-    {
+    if (light.width / light.length > 0.5 || light.tilt_angle > 45) {
         return false;
     }
     return true;
 }
 
-vector<Armor> ArmorDet::match_lights(const vector<Light> &lights, vector<int> &result)
-{
+vector<Armor> ArmorDet::match_lights(const vector<Light> &lights, vector<int> &result) {
     vector<Armor> armors;
     vector<string> class_names = {"red", "blue"};
     // 匹配灯条
-    for (size_t i = 0; i < lights.size(); i++)
-    {
-        for (size_t j = i + 1; j < lights.size(); j++)
-        {
-            if (is_armor(lights[i], lights[j]) != ArmorType::INVALID)
-            {
+    for (size_t i = 0; i < lights.size(); i++) {
+        for (size_t j = i + 1; j < lights.size(); j++) {
+            if (is_armor(lights[i], lights[j]) != ArmorType::INVALID) {
                 Armor armor(lights[i], lights[j]);
                 armor.classfication_result = class_names[result[4]];
                 armor.color = class_names[result[4]];
@@ -199,8 +170,7 @@ vector<Armor> ArmorDet::match_lights(const vector<Light> &lights, vector<int> &r
     return armors;
 }
 
-ArmorType ArmorDet::is_armor(const Light &light1, const Light &light2)
-{
+ArmorType ArmorDet::is_armor(const Light &light1, const Light &light2) {
     // 判断两根灯条是否为装甲板
     float length_ratio = light1.length < light2.length ? light1.length / light2.length : light2.length / light1.length;
     float avg_length = (light1.length + light2.length) / 2;
@@ -212,20 +182,16 @@ ArmorType ArmorDet::is_armor(const Light &light1, const Light &light2)
     // cout << length_ratio << " " << center_distance << " " << angle << endl;
     bool is_armor = length_ratio > 0.4 && center_distance > 1.0 && angle < 45;
     ArmorType type;
-    if (is_armor)
-    {
+    if (is_armor) {
         type = center_distance > 3.0 ? ArmorType::LARGE : ArmorType::SMALL;
-    }
-    else
-    {
+    } else {
         type = ArmorType::INVALID;
     }
 
     return type;
 }
 
-PnPSolver::PnPSolver(const cv::Mat &camera_matrix, const cv::Mat &dist_coeffs)
-{
+PnPSolver::PnPSolver(const cv::Mat &camera_matrix, const cv::Mat &dist_coeffs) {
     // 初始化相机参数
     this->camera_matrix = camera_matrix;
     this->dist_coeffs = dist_coeffs;
@@ -234,8 +200,7 @@ PnPSolver::PnPSolver(const cv::Mat &camera_matrix, const cv::Mat &dist_coeffs)
                      cv::Point3f(0.135 / 2, 0.055 / 2, 0), cv::Point3f(0.135 / 2, -0.055 / 2, 0)}; // m为单位
 }
 
-vector<cv::Mat> PnPSolver::solve(Armor &armor)
-{
+vector<cv::Mat> PnPSolver::solve(Armor &armor) {
     // 初始化图像坐标
     image_points = {armor.center, armor.left_light.top, armor.left_light.bottom, armor.right_light.bottom, armor.right_light.top};
     // 解PnP

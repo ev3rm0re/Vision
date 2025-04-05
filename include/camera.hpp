@@ -8,12 +8,10 @@
 #include <MvCameraControl.h>
 #include <opencv2/opencv.hpp>
 
-namespace HIK
-{
-    class Camera
-    {
+namespace HIK {
+    class Camera {
         public:
-            Camera();
+            Camera(float exposureTime, float gain);
             ~Camera();
             bool open();
             void close();
@@ -29,6 +27,8 @@ namespace HIK
             MVCC_INTVALUE stParam;
             MV_FRAME_OUT stOutFrame;
             MV_CC_PIXEL_CONVERT_PARAM CvtParam;
+            float exposureTime;
+            float gain;
     };
 } // namespace HIK
 

@@ -3,8 +3,7 @@
 
 #include <cstdint>
 
-namespace crc16
-{
+namespace crc16 {
     uint16_t Get_CRC16_Check_Sum(const uint8_t *pchMessage, uint32_t dwLength);
     /**
      * @brief CRC16 Verify function

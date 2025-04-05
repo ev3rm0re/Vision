@@ -1,14 +1,10 @@
 ﻿/*
 相机类的实现
 */
+#include <camera.hpp>
 
-#include "camera.hpp"
-#include <unistd.h>
-
-namespace HIK
-{
-    Camera::Camera()
-    {
+namespace HIK {
+    Camera::Camera(float exposureTime, float gain) : exposureTime(exposureTime), gain(gain) {
         nRet = MV_OK;
         isCameraOpened = false;
         handle = NULL;
@@ -18,42 +14,34 @@ namespace HIK
         memset(&stOutFrame, 0, sizeof(MV_FRAME_OUT));
     }
 
-    Camera::~Camera()
-    {
-        if (isCameraOpened)
-        {
+    Camera::~Camera() {
+        if (isCameraOpened) {
             MV_CC_StopGrabbing(handle);
             close();
         }
-        if (handle != NULL)
-        {
+        if (handle != NULL) {
             MV_CC_DestroyHandle(handle);
         }
     }
 
-    bool Camera::open()
-    {
+    bool Camera::open() {
         MV_CC_DEVICE_INFO_LIST stDeviceList;
         memset(&stDeviceList, 0, sizeof(MV_CC_DEVICE_INFO_LIST));
         nRet = MV_CC_EnumDevices(MV_GIGE_DEVICE | MV_USB_DEVICE, &stDeviceList);
-        if (MV_OK != nRet)
-        {
+        if (MV_OK != nRet) {
             std::cerr << "MV_CC_EnumDevices fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
             return false;
         }
-        while (!(stDeviceList.nDeviceNum > 0))
-        {
+        while (!(stDeviceList.nDeviceNum > 0)) {
             std::cerr << "No camera found!" << std::endl;
             sleep(1);
             nRet = MV_CC_EnumDevices(MV_GIGE_DEVICE | MV_USB_DEVICE, &stDeviceList);
-            if (MV_OK != nRet)
-            {
+            if (MV_OK != nRet) {
                 std::cerr << "MV_CC_EnumDevices fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
                 return false;
             }
         }
-        for (unsigned int i = 0; i < stDeviceList.nDeviceNum; i++)
-        {
+        for (unsigned int i = 0; i < stDeviceList.nDeviceNum; i++) {
             std::cout << "Device: " << i << std::endl;
             std::cout << "Device Model Name: " << stDeviceList.pDeviceInfo[i]->SpecialInfo.stUsb3VInfo.chModelName << std::endl;
         }
@@ -61,71 +49,62 @@ namespace HIK
         // 选择相机
         unsigned int nIndex = 0;
         nRet = MV_CC_CreateHandle(&handle, stDeviceList.pDeviceInfo[nIndex]);
-        if (MV_OK != nRet)
-        {
+        if (MV_OK != nRet) {
             std::cerr << "MV_CC_CreateHandle fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
             return false;
         }
 
         // 打开相机
         nRet = MV_CC_OpenDevice(handle);
-        if (MV_OK != nRet)
-        {
+        if (MV_OK != nRet) {
             std::cerr << "MV_CC_OpenDevice fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
             return false;
         }
 
         // 关闭触发模式
         nRet = MV_CC_SetEnumValue(handle, "TriggerMode", MV_TRIGGER_MODE_OFF);
-        if (MV_OK != nRet)
-        {
+        if (MV_OK != nRet) {
             std::cerr << "MV_CC_SetEnumValue fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
             return false;
         }
 
         // 设置图像格式
         nRet = MV_CC_SetEnumValue(handle, "PixelFormat", PixelType_Gvsp_BayerGB8);
-        if (MV_OK != nRet)
-        {
+        if (MV_OK != nRet) {
             std::cerr << "MV_CC_SetEnumValue fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
             return false;
         }
 
         // 设置帧率
         nRet = MV_CC_SetFloatValue(handle, "AcquisitionFrameRate", 120);
-        if (MV_OK != nRet)
-        {
+        if (MV_OK != nRet) {
             std::cerr << "MV_CC_SetFloatValue fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
             return false;
         }
 
         // 设置曝光时间
-        nRet = MV_CC_SetFloatValue(handle, "ExposureTime", 3000);
-        if (MV_OK != nRet)
-        {
+        nRet = MV_CC_SetFloatValue(handle, "ExposureTime", exposureTime);
+        if (MV_OK != nRet) {
             std::cerr << "MV_CC_SetFloatValue fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
             return false;
         }
         // 设置增益
-        nRet = MV_CC_SetFloatValue(handle, "Gain", 12.0);
-        if (MV_OK != nRet)
-        {
+        nRet = MV_CC_SetFloatValue(handle, "Gain", gain);
+        if (MV_OK != nRet) {
             std::cerr << "MV_CC_SetFloatValue fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
             return false;
         }
 
         // 开始取流
         nRet = MV_CC_StartGrabbing(handle);
-        if (MV_OK != nRet)
-        {
+        if (MV_OK != nRet) {
             std::cerr << "MV_CC_StartGrabbing fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
             return false;
         }
 
         // 获取图像大小
         nRet = MV_CC_GetImageBuffer(handle, &stOutFrame, 400);
-        if (MV_OK != nRet)
-        {
+        if (MV_OK != nRet) {
             std::cerr << "MV_CC_GetImageBuffer fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
             return false;
         }
@@ -134,8 +113,7 @@ namespace HIK
         CvtParam.nWidth = stOutFrame.stFrameInfo.nWidth;
         CvtParam.nHeight = stOutFrame.stFrameInfo.nHeight;
         pDataForBGR = (unsigned char*)malloc(stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight * 4 + 2048);
-        if (NULL != stOutFrame.pBufAddr)
-        {
+        if (NULL != stOutFrame.pBufAddr) {
             MV_CC_FreeImageBuffer(handle, &stOutFrame);
         }
 
@@ -143,11 +121,9 @@ namespace HIK
         return true;
     }
 
-    bool Camera::cap(cv::Mat* srcimg)
-    {
+    bool Camera::cap(cv::Mat* srcimg) {
         nRet = MV_CC_GetImageBuffer(handle, &stOutFrame, 400);
-        if (MV_OK != nRet)
-        {
+        if (MV_OK != nRet) {
             std::cerr << "MV_CC_GetImageBuffer fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
             return false;
         }
@@ -156,21 +132,18 @@ namespace HIK
         CvtParam.nDstBufferSize = stOutFrame.stFrameInfo.nWidth * stOutFrame.stFrameInfo.nHeight * 4 + 2048;
         CvtParam.pDstBuffer = pDataForBGR;
         nRet = MV_CC_ConvertPixelType(handle, &CvtParam);
-        if (MV_OK != nRet)
-        {
+        if (MV_OK != nRet) {
             std::cerr << "MV_CC_ConvertPixelType fail! nRet [0x" << std::hex << nRet << "]" << std::endl;
             return false;
         }
         *srcimg = cv::Mat(stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth, CV_8UC3, pDataForBGR);
-        if (NULL != stOutFrame.pBufAddr)
-        {
+        if (NULL != stOutFrame.pBufAddr) {
             MV_CC_FreeImageBuffer(handle, &stOutFrame);
         }
         return true;
     }
 
-    void Camera::close()
-    {
+    void Camera::close() {
         MV_CC_CloseDevice(handle);
     }
 }

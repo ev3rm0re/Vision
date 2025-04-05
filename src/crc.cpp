@@ -1,28 +1,21 @@
-#include "crc.hpp"
+#include <crc.hpp>
 
-#include <cstdint>
-#include <iostream>
-#include <iomanip>
 using namespace std;
-namespace crc16
-{
+namespace crc16 {
     /**
      * @brief CRC16 Caculation function
      * @param[in] pchMessage : Data to Verify,
      * @param[in] dwLength : Stream length = Data + checksum
      * @return : CRC16 checksum
      */
-    uint16_t Get_CRC16_Check_Sum(const uint8_t *pchMessage, uint32_t dwLength)
-    {
+    uint16_t Get_CRC16_Check_Sum(const uint8_t *pchMessage, uint32_t dwLength) {
         uint16_t crc_poly = 0xA001; // Bit sequence inversion of 0x8005
         uint16_t data_t = 0xFFFF;   // CRC register
 
-        for (uint32_t i = 0; i < dwLength; i++)
-        {
+        for (uint32_t i = 0; i < dwLength; i++) {
             data_t ^= pchMessage[i]; // 8-bit data
 
-            for (uint8_t j = 0; j < 8; j++)
-            {
+            for (uint8_t j = 0; j < 8; j++) {
                 if (data_t & 0x0001)
                     data_t = (data_t >> 1) ^ crc_poly;
                 else
@@ -39,8 +32,7 @@ namespace crc16
      * @param[in] dwLength : Stream length = Data + checksum
      * @return : True or False (CRC Verify Result)
      */
-    uint32_t Verify_CRC16_Check_Sum(const uint8_t *pchMessage, uint32_t dwLength)
-    {
+    uint32_t Verify_CRC16_Check_Sum(const uint8_t *pchMessage, uint32_t dwLength) {
         uint16_t w_expected = 0;
 
         if ((pchMessage == nullptr) || (dwLength <= 2))
@@ -58,8 +50,7 @@ namespace crc16
      * @param[in] dwLength : Stream length = Data + checksum
      * @return none
      */
-    void Append_CRC16_Check_Sum(uint8_t *pchMessage, uint32_t dwLength)
-    {
+    void Append_CRC16_Check_Sum(uint8_t *pchMessage, uint32_t dwLength) {
         uint16_t w_crc = 0;
 
         if ((pchMessage == nullptr) || (dwLength <= 2))

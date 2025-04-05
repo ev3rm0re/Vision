@@ -21,7 +21,7 @@ void calibrate() {
     // 图像采集
     vector<vector<Point3f>> objectPoints;
     vector<vector<Point2f>> imagePoints;
-    HIK::Camera camera;
+    HIK::Camera camera(2000.0, 16.0);
     camera.open();
     
     Mat frame;
