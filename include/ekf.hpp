@@ -80,16 +80,6 @@ class EKFTracker {
         }
     
         cv::Mat getState() const { return state; }
-        double getX() const { return state.at<double>(0); }
-        double getY() const { return state.at<double>(1); }
-        double getZ() const { return state.at<double>(2); }
-        double getVx() const { return state.at<double>(3); }
-        double getVy() const { return state.at<double>(4); }
-        double getVz() const { return state.at<double>(5); }
-        double getYaw() const { return state.at<double>(6); }
-        double getYawRate() const { return state.at<double>(7); }
-        double getPitch() const { return state.at<double>(8); }
-        double getPitchRate() const { return state.at<double>(9); }
     
     private:
         cv::Mat state; // 状态向量 [x, y, z, vx, vy, vz, yaw, yaw_rate, pitch, pitch_rate]

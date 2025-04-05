@@ -1,5 +1,5 @@
-#ifndef _CALCULATOR_HPP_
-#define _CALCULATOR_HPP_
+#ifndef _PREDICTOR_HPP_
+#define _PREDICTOR_HPP_
 
 #include <opencv2/opencv.hpp>
 #include <vector>
