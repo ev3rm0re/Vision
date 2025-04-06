@@ -8,7 +8,7 @@ yolo:
 
 camera:
   matrix_path: "../config/camera_matrix.yaml"
-  exposure_time: 1000
+  exposure_time: 1500
   gain: 16.0
 
 number_classifier:

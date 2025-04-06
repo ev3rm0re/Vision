@@ -203,7 +203,7 @@ vector<cv::Mat> PnPSolver::solve(Armor &armor) {
     // 初始化图像坐标
     image_points = {armor.center, armor.left_light.top, armor.left_light.bottom, armor.right_light.bottom, armor.right_light.top};
     // 解PnP
-    cv::solvePnP(object_points, image_points, camera_matrix, dist_coeffs, rvec, tvec, false, cv::SOLVEPNP_ITERATIVE);
+    cv::solvePnP(object_points, image_points, camera_matrix, dist_coeffs, rvec, tvec, false, cv::SOLVEPNP_IPPE);
 
     return {tvec, rvec};
 }

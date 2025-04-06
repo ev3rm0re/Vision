@@ -119,6 +119,7 @@ void detect() {
 
     int current_id = 0;
     int frame_count = 0;
+    int lost_count = 0;
 
     while (true) {
         auto start = chrono::high_resolution_clock::now();
@@ -150,6 +151,7 @@ void detect() {
         });
 
         if (!armors.empty()) {
+            lost_count = 0;
             Armor armor = armors[0];
 
             if (armor.color == (detect_color.load() ? "red" : "blue")) {
@@ -157,10 +159,10 @@ void detect() {
                     armor.id = current_id; // 如果 armor.id 没有被赋值，则赋予一个新的唯一 ID
                 }
                 vector<cv::Mat> vec = pnp_solver.solve(armor);
+                cv::drawFrameAxes(frame, camera_matrix, distortion_coefficients, vec[1], vec[0], 0.1, 1);
                 predictor.getAttr(vec, armor);
                 double yaw = atan2(armor.x, armor.z);
                 double pitch = atan2(armor.y, armor.z);
-                std::cout << "yaw: " << yaw << " pitch: " << pitch << std::endl;
 
                 // 初始化或更新 EKF Tracker
                 if (ekf_trackers.find(armor.id) == ekf_trackers.end()) {
@@ -183,8 +185,8 @@ void detect() {
                     cv::Point3f last_traj_point = id_trajectory[armor.id].back();
                     double distance = cv::norm(last_traj_point - current_point);
                     double tilt_angle = abs(last_armor.yaw - armor.yaw);
-                    std::cout << "distance: " << distance << " tilt_angle: " << tilt_angle << std::endl;
-                    if (distance > 0.2 || tilt_angle > 0.6) {
+                    std::cout << "Distance: " << distance << ", Tilt Angle: " << tilt_angle << endl;
+                    if (distance > 0.15 || tilt_angle > 0.6 || lost_count > 4) {
                         int old_id = armor.id;
                         int new_id = ++current_id;
                         armor.id = new_id;
@@ -249,22 +251,24 @@ void detect() {
                 
                 line(frame, armor.left_light.top, armor.right_light.bottom, cv::Scalar(0, 255, 0), 2);
                 line(frame, armor.left_light.bottom, armor.right_light.top, cv::Scalar(0, 255, 0), 2);
-                putText(frame, to_string(armor.x) + " " + to_string(armor.y), armor.right_light.top + cv::Point2f(5, -80), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
+                // putText(frame, to_string(armor.x) + " " + to_string(armor.y), armor.right_light.top + cv::Point2f(5, -80), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
                 putText(frame, "armor id: " + to_string(armor.id), armor.right_light.top + cv::Point2f(5, -60), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
-                putText(frame, "armor yaw: " + to_string(armor.yaw).substr(0, 5), armor.right_light.top + cv::Point2f(5, -40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
-                putText(frame, armor.classfication_result, armor.right_light.top + cv::Point2f(5, -20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
-                putText(frame, "yolo conf: " + to_string(armor.yolo_confidence).substr(0, 2) + "%", armor.right_light.center + cv::Point2f(5, 0), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
-                putText(frame, "distance: " + to_string(armor.z).substr(0, 3), armor.right_light.center + cv::Point2f(5, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
+                // putText(frame, "armor yaw: " + to_string(armor.yaw).substr(0, 5), armor.right_light.top + cv::Point2f(5, -40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
+                // putText(frame, armor.classfication_result, armor.right_light.top + cv::Point2f(5, -20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
+                // putText(frame, "yolo conf: " + to_string(armor.yolo_confidence).substr(0, 2) + "%", armor.right_light.center + cv::Point2f(5, 0), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
+                // putText(frame, "distance: " + to_string(armor.z).substr(0, 3), armor.right_light.center + cv::Point2f(5, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
                 last_armor = armor;
                 last_timestamp = timestamp;
             }
+        } else {
+            lost_count++;
         }
 
         auto end = chrono::high_resolution_clock::now();
         double fps = 1e9 / chrono::duration_cast<chrono::nanoseconds>(end - start).count();
         putText(frame, "FPS: " + to_string(fps).substr(0, 5), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
 
-        if (frame_count < 10) cv::imwrite("frame" + to_string(frame_count++) + ".jpg", frame);
+        if (frame_count < 20) cv::imwrite("../images/frame/frame" + to_string(frame_count++) + ".jpg", frame);
         cv::imshow("frame", frame);
         if (cv::waitKey(1) == 27) break;
     }
@@ -275,5 +279,6 @@ void detect() {
 
 int main(int argc, char **argv) {
     detect();
+    // calibrate();
     return 0;
 }

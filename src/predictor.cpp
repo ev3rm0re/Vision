@@ -6,8 +6,8 @@ void Predictor::getAttr(std::vector<cv::Mat> &vec, Armor& armor) {
     armor.y = vec.at(0).at<double>(1, 0);
     armor.z = vec.at(0).at<double>(2, 0);
 
-    armor.yaw = vec.at(1).at<double>(0, 0);
-    armor.pitch = vec.at(1).at<double>(1, 0);
+    armor.pitch = vec.at(1).at<double>(0, 0);
+    armor.yaw = vec.at(1).at<double>(1, 0);
     armor.roll = vec.at(1).at<double>(2, 0);
 }
 

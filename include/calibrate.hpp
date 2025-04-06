@@ -8,7 +8,7 @@ using namespace cv;
 void calibrate() {
     // 棋盘格参数
     Size boardSize(8, 5);        // 内部角点数（对应8x5个棋盘格）
-    float square_size = 0.027f;
+    float square_size = 0.02816f;
     
     // 3D坐标生成（单位：米）
     vector<Point3f> obj;
@@ -21,13 +21,28 @@ void calibrate() {
     // 图像采集
     vector<vector<Point3f>> objectPoints;
     vector<vector<Point2f>> imagePoints;
-    HIK::Camera camera(2000.0, 16.0);
-    camera.open();
-    
+    // HIK::Camera camera(4000.0, 8.0);
+    // camera.open();
+
     Mat frame;
-    int count = 0;
-    while (true) {
-        camera.cap(&frame);
+    // int count = 0;
+
+    // while (true) {
+    //     camera.cap(&frame);
+    //     if (frame.empty()) break;
+    //     char key = waitKey(1);
+    //     if (key == 32) {
+    //         cv::imwrite("../images/calibration_" + to_string(count++) + ".jpg", frame);
+    //     }
+    //     cv::imshow("Calibration", frame);
+    //     if (key == 27) break;
+    // }
+    std::vector<String> images;
+
+    cv::glob("../images/calibration_*.jpg", images);
+
+    for (int i = 0; i < images.size(); ++i) {
+        frame = imread(images[i]);
         if (frame.empty()) break;
 
         // 角点检测
@@ -50,10 +65,9 @@ void calibrate() {
         }
 
         imshow("Calibration", frame);
-        char key = waitKey(200);
-        if (key == 27 || objectPoints.size() >= 60) break;  // 至少采集30张[1](@ref)
+        char key = waitKey(500);
+        if (key == 27 || objectPoints.size() >= 30) break;  // 至少采集30张[1](@ref)
     }
-    camera.close();
 
     // 标定验证
     if (objectPoints.size() < 6) {
