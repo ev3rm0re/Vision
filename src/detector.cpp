@@ -179,7 +179,6 @@ ArmorType ArmorDet::is_armor(const Light &light1, const Light &light2) {
 
     cv::Point2f diff = light1.center - light2.center;
     float angle = atan2(abs(diff.y), abs(diff.x)) * 180 / CV_PI;
-    // cout << length_ratio << " " << center_distance << " " << angle << endl;
     bool is_armor = length_ratio > 0.4 && center_distance > 1.0 && angle < 45;
     ArmorType type;
     if (is_armor) {

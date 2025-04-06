@@ -36,11 +36,11 @@ bool Predictor::calculate(Armor& last_armor, Armor& armor, double interval) {
     double zc = armor.z * (armor.z / cos(beta1) + r) / (armor.z / cos(beta1));
 
     if (abs(dc - d1) / d1 > 0.08) return false;
-    std::cout << "delta_alpha: " << delta_alpha << " delta_theta: " << delta_theta << " omega: " << omega << std::endl;
-    std::cout << "last_armor.x: " << last_armor.x << " last_armor.z: " << last_armor.z << " d0: " << d0 << std::endl;
-    std::cout << "armor.x: " << armor.x << " armor.z: " << armor.z << " d1: " << d1 << std::endl;
-    std::cout << "r: " << r << " dc: " << dc << std::endl;
-    std::cout << "armor current yaw: " << alpha1 + CV_PI / 4.0 << std::endl;
+    // std::cout << "delta_alpha: " << delta_alpha << " delta_theta: " << delta_theta << " omega: " << omega << std::endl;
+    // std::cout << "last_armor.x: " << last_armor.x << " last_armor.z: " << last_armor.z << " d0: " << d0 << std::endl;
+    // std::cout << "armor.x: " << armor.x << " armor.z: " << armor.z << " d1: " << d1 << std::endl;
+    // std::cout << "r: " << r << " dc: " << dc << std::endl;
+    // std::cout << "armor current yaw: " << alpha1 + CV_PI / 4.0 << std::endl;
     return true;
 }
 
@@ -72,6 +72,5 @@ void Predictor::drawPrediction(const cv::Mat &camera_matrix, cv::Mat &frame) {
     double xt = ((x1 + r * sin(beta1) - r * sin(CV_PI / 2 - beta1 - omega * t_solution)) + (x0 + r * sin(beta0) - r * sin(CV_PI / 2 - beta1 - omega * t_solution))) / 2.0;
     double zt = ((z1 + r * cos(beta1) - r * cos(CV_PI / 2 - beta1 - omega * t_solution)) + (z0 + r * cos(beta0) - r * cos(CV_PI / 2 - beta1 - omega * t_solution))) / 2.0;
     double u = camera_matrix.at<double>(0, 0) * xt / zt + camera_matrix.at<double>(0, 2);
-    std::cout << "u: " << u << std::endl;
     cv::circle(frame, cv::Point(u, camera_matrix.at<double>(1, 2)), 10, cv::Scalar(0, 0, 255), -1);
 }
