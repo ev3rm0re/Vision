@@ -138,8 +138,15 @@ vector<Light> ArmorDet::find_lights(const cv::Mat &roi_image, const cv::Point2f 
     if (lights.size() > 2) {
         sort(lights.begin(), lights.end(), [](const Light &a, const Light &b)
              { return a.center.x > b.center.x; });
-        // 只保留首尾灯条
-        lights.erase(lights.begin() + 1, lights.end() - 1);
+        // 保留两两距离排第二的灯条
+        while (lights.size() > 2) {
+            if (lights[0].center.x - lights[1].center.x > lights[1].center.x - lights[2].center.x) {
+                lights.erase(lights.begin() + 1);
+            } else {
+                lights.erase(lights.begin());
+            }
+        }
+        // lights.erase(lights.begin() + 1, lights.end() - 1);
     }
     return lights;
 }
@@ -152,12 +159,29 @@ bool ArmorDet::is_light(const Light &light) {
     return true;
 }
 
+bool ArmorDet::containLight(const Light & light1, const Light & light2, const std::vector<Light> & lights) {
+    auto points = std::vector<cv::Point2f>{light1.top, light1.bottom, light2.top, light2.bottom};
+    auto bounding_rect = cv::boundingRect(points);
+  
+    for (const auto & test_light : lights) {
+      if (test_light.center == light1.center || test_light.center == light2.center) continue;
+  
+      if (
+        bounding_rect.contains(test_light.top) || bounding_rect.contains(test_light.bottom) ||
+        bounding_rect.contains(test_light.center)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
 vector<Armor> ArmorDet::match_lights(const vector<Light> &lights, vector<int> &result) {
     vector<Armor> armors;
     vector<string> class_names = {"red", "blue"};
     // 匹配灯条
     for (size_t i = 0; i < lights.size(); i++) {
         for (size_t j = i + 1; j < lights.size(); j++) {
+            if (containLight(lights[i], lights[j], lights)) continue;
             if (is_armor(lights[i], lights[j]) != ArmorType::INVALID) {
                 Armor armor(lights[i], lights[j]);
                 armor.classfication_result = class_names[result[4]];

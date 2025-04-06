@@ -185,8 +185,7 @@ void detect() {
                     cv::Point3f last_traj_point = id_trajectory[armor.id].back();
                     double distance = cv::norm(last_traj_point - current_point);
                     double tilt_angle = abs(last_armor.yaw - armor.yaw);
-                    std::cout << "Distance: " << distance << ", Tilt Angle: " << tilt_angle << endl;
-                    if (distance > 0.15 || tilt_angle > 0.6 || lost_count > 4) {
+                    if (distance > 0.13 || tilt_angle > 0.6 || lost_count > 4) {
                         int old_id = armor.id;
                         int new_id = ++current_id;
                         armor.id = new_id;
@@ -196,7 +195,7 @@ void detect() {
                         // 更新 tracked_armors 中的记录
                         tracked_armors.erase(old_id);
                         tracked_armors[new_id] = armor;
-                        cout << ">>>>>>>Armor ID updated from " << old_id << " to " << new_id << endl;
+                        // cout << ">>>>>>>Armor ID updated from " << old_id << " to " << new_id << endl;
                     } else {
                         // 无跳变时更新 tracked 信息
                         tracked_armors[armor.id] = armor;
@@ -249,14 +248,12 @@ void detect() {
                     }
                 }
                 
-                line(frame, armor.left_light.top, armor.right_light.bottom, cv::Scalar(0, 255, 0), 2);
-                line(frame, armor.left_light.bottom, armor.right_light.top, cv::Scalar(0, 255, 0), 2);
-                // putText(frame, to_string(armor.x) + " " + to_string(armor.y), armor.right_light.top + cv::Point2f(5, -80), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
-                putText(frame, "armor id: " + to_string(armor.id), armor.right_light.top + cv::Point2f(5, -60), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
-                // putText(frame, "armor yaw: " + to_string(armor.yaw).substr(0, 5), armor.right_light.top + cv::Point2f(5, -40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
-                // putText(frame, armor.classfication_result, armor.right_light.top + cv::Point2f(5, -20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
-                // putText(frame, "yolo conf: " + to_string(armor.yolo_confidence).substr(0, 2) + "%", armor.right_light.center + cv::Point2f(5, 0), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
-                // putText(frame, "distance: " + to_string(armor.z).substr(0, 3), armor.right_light.center + cv::Point2f(5, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
+                line(frame, armor.left_light.top, armor.right_light.bottom, cv::Scalar(0, 255, 0), 1);
+                line(frame, armor.left_light.bottom, armor.right_light.top, cv::Scalar(0, 255, 0), 1);
+                putText(frame, "armor id: " + to_string(armor.id), armor.right_light.top + cv::Point2f(5, -40), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
+                putText(frame, armor.classfication_result, armor.right_light.top + cv::Point2f(5, -20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
+                putText(frame, "yolo conf: " + to_string(armor.yolo_confidence).substr(0, 2) + "%", armor.right_light.center + cv::Point2f(5, 0), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
+                putText(frame, "distance: " + to_string(armor.z).substr(0, 3), armor.right_light.center + cv::Point2f(5, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 1);
                 last_armor = armor;
                 last_timestamp = timestamp;
             }
