@@ -9,7 +9,6 @@
 class Predictor {
     public:
         Predictor() = default;
-        void getAttr(std::vector<cv::Mat> &vec, Armor& armor);
         bool calculate(Armor& last_armor, Armor& armor, double interval);
         bool predict(double& aim_yaw, double& aim_pitch);
         void drawPrediction(const cv::Mat &camera_matrix, cv::Mat &frame);

@@ -1,16 +1,6 @@
 #include <boost/math/tools/roots.hpp>
 #include <predictor.hpp>
 
-void Predictor::getAttr(std::vector<cv::Mat> &vec, Armor& armor) {
-    armor.x = vec.at(0).at<double>(0, 0);
-    armor.y = vec.at(0).at<double>(1, 0);
-    armor.z = vec.at(0).at<double>(2, 0);
-
-    armor.pitch = vec.at(1).at<double>(0, 0);
-    armor.yaw = vec.at(1).at<double>(1, 0);
-    armor.roll = vec.at(1).at<double>(2, 0);
-}
-
 bool Predictor::calculate(Armor& last_armor, Armor& armor, double interval) {
     alpha0 = atan2(last_armor.x, last_armor.z);
     alpha1 = atan2(armor.x, armor.z);

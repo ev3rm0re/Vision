@@ -69,7 +69,7 @@ struct Armor {
     std::string classfication_result;
     std::string color;
     
-    int id = -1;
+    int track_id = -1;
 
     // 装甲板自身相对于相机坐标系的位姿
     double yaw = 0.0;

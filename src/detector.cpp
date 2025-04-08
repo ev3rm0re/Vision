@@ -45,12 +45,17 @@ std::vector<std::vector<int>> YoloDet::postprocess(const ov::Tensor &output, con
     cv::Mat output_buffer(output.get_shape()[1], output.get_shape()[2], CV_32F, data); // 创建输出缓冲区
     // cv::transpose(output_buffer, output_buffer);				// 转置
     std::vector<std::vector<int>> results;
+    std::vector<cv::Rect> boxes;
+    std::vector<int> class_ids;
+    std::vector<float> scores;
     // 遍历输出层
     for (int i = 0; i < output_buffer.rows; i++) { // 遍历每个边界框
         // 获取类别得分
         float score = output_buffer.at<float>(i, 4);
         float class_id = output_buffer.at<float>(i, 5);
         if (score > score_threshold) { // 判断是否满足阈值
+            scores.push_back(score);
+            class_ids.push_back(int(class_id));
             // 获取边界框
             float ltx = output_buffer.at<float>(i, 0);
             float lty = output_buffer.at<float>(i, 1);
@@ -61,10 +66,15 @@ std::vector<std::vector<int>> YoloDet::postprocess(const ov::Tensor &output, con
             int top = int(lty * scale);
             int right = int(rbx * scale);
             int bottom = int(rby * scale);
-            std::vector<int> box = {left, top, right, bottom, int(class_id), int(score * 100)};
-            // 将边界框存储
-            results.push_back(box);
+            cv::Rect box = cv::Rect(left, top, right - left, bottom - top);
+            boxes.push_back(box);
         }
+    }
+    // NMS
+    std::vector<int> indices;
+    cv::dnn::NMSBoxes(boxes, scores, 0.3, 0.5, indices);
+    for (int i = 0; i < indices.size(); i++) {
+        results.push_back(std::vector<int>{boxes[indices[i]].tl().x, boxes[indices[i]].tl().y, boxes[indices[i]].br().x, boxes[indices[i]].br().y, class_ids[indices[i]], (int)(scores[indices[i]] * 100)});
     }
     return results;
 }
@@ -89,10 +99,6 @@ vector<Armor> ArmorDet::detect(const vector<vector<int>> &results, const cv::Mat
         vector<Light> lights = find_lights(roi_image, roi_tl);
         // 匹配灯条
         vector<Armor> armors = match_lights(lights, result);
-        // 筛出无效装甲板
-        /*if (armor.center.x != 0 && armor.center.y != 0) {
-            armors.push_back(armor);
-        }*/
         armors_.insert(armors_.end(), armors.begin(), armors.end());
     }
     return armors_;
