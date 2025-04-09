@@ -145,7 +145,7 @@ void detect() {
         double fps = 1e9 / chrono::duration_cast<chrono::nanoseconds>(end - start).count();
         putText(frame, "FPS: " + to_string(fps).substr(0, 5), cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
 
-        if (frame_count < 20) cv::imwrite("../images/frame/frame" + to_string(frame_count++) + ".jpg", frame);
+        if (frame_count < 100) cv::imwrite("../images/frame/frame" + to_string(frame_count++) + ".jpg", frame);
         cv::imshow("frame", frame);
         if (cv::waitKey(1) == 27) break;
     }

@@ -1,5 +1,4 @@
 #include <chrono>
-#include <limits>
 
 #include <armor_tracker.hpp>
 
@@ -24,32 +23,57 @@ int ArmorTracker::assignNewID() {
 
 void ArmorTracker::track(std::vector<Armor> &armors, cv::Mat &frame, double dt) {
     if (armors.empty()) return;
-    PnPSolver pnp_solver(camera_matrix_, dist_coeffs_);
-    vector<vector<double>> cost_matrix = vector<vector<double>>(armors.size(), vector<double>(tracked_armors_.size()));
-    auto current_time = chrono::high_resolution_clock::now();
 
+    auto current_time = chrono::high_resolution_clock::now();
     for (auto& tracked_armor : tracked_armors_) {
         double dt = chrono::duration_cast<chrono::duration<double>>(current_time - tracked_armor.last_update_time).count();
         tracked_armor.ekf_tracker.predict(dt);
     }
 
+    PnPSolver pnp_solver(camera_matrix_, dist_coeffs_);
     for (int i = 0; i < armors.size(); ++i) {
-        auto armor = armors[i];
-        if (armor.color != (detect_color.load() ? "red" : "blue")) continue;
-        std::vector<cv::Mat> poses = pnp_solver.solve(armor);
+        if (armors[i].color != (detect_color.load() ? "red" : "blue")) continue;
+        std::vector<cv::Mat> poses = pnp_solver.solve(armors[i]);
         cv::Mat tvec = poses[0], rvec = poses[1];
         cv::drawFrameAxes(frame, camera_matrix_, dist_coeffs_, rvec, tvec, 0.1, 1);
-        assignAttr(tvec, rvec, armor);
-        
+        assignAttr(tvec, rvec, armors[i]);
+        bool is_new = true;
         for (int j = 0; j < tracked_armors_.size(); ++j) {
             auto tracked_armor = tracked_armors_[j];
             // 获取代价矩阵
             cv::Point3d predict_position = cv::Point3d(tracked_armor.ekf_tracker.getState().at<double>(0, 0),
                                                          tracked_armor.ekf_tracker.getState().at<double>(1, 0),
                                                          tracked_armor.ekf_tracker.getState().at<double>(2, 0));
-            cv::Point3d current_position = cv::Point3d(armor.x, armor.y, armor.z);
-            double cost = cv::norm(predict_position - current_position);
-            cost_matrix[i][j] = cost;
+            cv::Point3d current_position = cv::Point3d(armors[i].x, armors[i].y, armors[i].z);
+            double distance = cv::norm(predict_position - current_position);
+            double tilt_angle = abs(armors[i].yaw - tracked_armor.ekf_tracker.getState().at<double>(6, 0));
+            if (distance < 0.13 || tilt_angle < 0.6) {
+                is_new = false;
+                break;
+            }
+        }
+        if (is_new) {
+            TrackedArmor new_tracked;
+            armors[i].track_id = assignNewID();
+            new_tracked.armor = armors[i];
+            new_tracked.ekf_tracker.init(armors[i].x, armors[i].y, armors[i].z, armors[i].yaw, armors[i].pitch, dt);
+            tracked_armors_.push_back(new_tracked);
+        }
+    }
+
+    vector<vector<double>> cost_matrix = vector<vector<double>>(armors.size(), vector<double>(tracked_armors_.size()));
+    for (int i = 0; i < armors.size(); ++i) {
+        if (armors[i].color != (detect_color.load() ? "red" : "blue")) continue;
+        for (int j = 0; j < tracked_armors_.size(); ++j) {
+            auto tracked_armor = tracked_armors_[j];
+            // 获取代价矩阵
+            cv::Point3d predict_position = cv::Point3d(tracked_armor.ekf_tracker.getState().at<double>(0, 0),
+                                                         tracked_armor.ekf_tracker.getState().at<double>(1, 0),
+                                                         tracked_armor.ekf_tracker.getState().at<double>(2, 0));
+            cv::Point3d current_position = cv::Point3d(armors[i].x, armors[i].y, armors[i].z);
+            double distance = cv::norm(predict_position - current_position);
+            double tilt_angle = abs(armors[i].yaw - tracked_armor.ekf_tracker.getState().at<double>(6, 0));
+            cost_matrix[i][j] = cv::norm(predict_position - current_position);
         }
     }
 
@@ -57,19 +81,23 @@ void ArmorTracker::track(std::vector<Armor> &armors, cv::Mat &frame, double dt) 
     
     vector<bool> matched(tracked_armors_.size(), false);
     for (int i = 0; i < result.size(); ++i) {
-        std::cout << i << "->" << result[i] << endl;
         if (result[i] != -1) {
             int j = result[i];
 
-            double distance = cv::norm(cv::Point3f(armors[i].x, armors[i].y, armors[i].z) - cv::Point3f(tracked_armors_[j].armor.x, tracked_armors_[j].armor.y, tracked_armors_[j].armor.z));
-            double tilt_angle = abs(armors[i].yaw - tracked_armors_[j].armor.yaw);
-            if (distance > 0.13 || tilt_angle > 0.6) continue;
-
-            tracked_armors_[j].ekf_tracker.update(armors[i].x, armors[i].y, armors[i].z, armors[i].yaw, armors[i].pitch);
-            tracked_armors_[j].armor = armors[i];
-            tracked_armors_[j].lost_count = 0;
-            tracked_armors_[j].last_update_time = current_time;
-            matched[j] = true;
+            cv::Point3d predict_position = cv::Point3d(tracked_armors_[j].ekf_tracker.getState().at<double>(0, 0),
+                                                        tracked_armors_[j].ekf_tracker.getState().at<double>(1, 0),
+                                                        tracked_armors_[j].ekf_tracker.getState().at<double>(2, 0));
+            cv::Point3d current_position = cv::Point3d(armors[i].x, armors[i].y, armors[i].z);
+            double distance = cv::norm(predict_position - current_position);
+            double tilt_angle = abs(armors[i].yaw - tracked_armors_[j].ekf_tracker.getState().at<double>(6, 0));
+            if (distance < 0.13 || tilt_angle < 0.6) {
+                armors[i].track_id = tracked_armors_[j].armor.track_id;
+                tracked_armors_[j].ekf_tracker.update(armors[i].x, armors[i].y, armors[i].z, armors[i].yaw, armors[i].pitch);
+                tracked_armors_[j].armor = armors[i];
+                tracked_armors_[j].lost_count = 0;
+                tracked_armors_[j].last_update_time = current_time;
+                matched[j] = true;
+            }
         }
     }
 
@@ -83,29 +111,9 @@ void ArmorTracker::track(std::vector<Armor> &armors, cv::Mat &frame, double dt) 
     // 移除长时间丢失的跟踪器
     tracked_armors_.erase(
         remove_if(tracked_armors_.begin(), tracked_armors_.end(),
-                  [](const TrackedArmor& t) { return t.lost_count > 5; }),
+                  [](const TrackedArmor& t) { return t.lost_count > 0; }),
         tracked_armors_.end()
     );
-
-
-    // 添加新检测到的装甲板作为新跟踪器
-    for (auto& armor : armors) {
-        if (armor.color != (detect_color.load() ? "red" : "blue")) continue;
-        bool is_new = true;
-        for (auto& tracked : tracked_armors_) {
-            if (tracked.armor.track_id == armor.track_id) {
-                is_new = false;
-                break;
-            }
-        }
-        if (is_new) {
-            TrackedArmor new_tracked;
-            armor.track_id = assignNewID();
-            new_tracked.armor = armor;
-            new_tracked.ekf_tracker.init(armor.x, armor.y, armor.z, armor.yaw, armor.pitch, dt);
-            tracked_armors_.push_back(new_tracked);
-        }
-    }
 }
 
 void ArmorTracker::drawTrajectories(cv::Mat& frame, const cv::Mat& cameraMatrix, const cv::Mat& distCoeffs) {
