@@ -18,10 +18,7 @@ public:
     };
     ArmorTracker(const cv::Mat &camera_matrix, const cv::Mat &dist_coeffs);
     void assignAttr(cv::Mat &tvec, cv::Mat &rvec, Armor& armor);
-    void track(std::vector<Armor> &armors, cv::Mat &frame, double dt);
-    const std::map<int, Armor> &getTrackedArmors() const;
-    void drawTrajectories(cv::Mat &frame, const cv::Mat &cameraMatrix, const cv::Mat &distCoeffs);
-    void dfs(int i, vector<bool>& used_j, double current_cost, double& min_cost, vector<int>& current_match, vector<int>& best_match, const vector<vector<double>>& cost_matrix);
+    void track(std::vector<Armor> &armors, cv::Mat &frame);
     vector<int> hungarian(const vector<vector<double>>& cost_matrix);
 
 private:

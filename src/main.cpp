@@ -129,7 +129,7 @@ void detect() {
         nc.extractNumbers(frame, armors);
         nc.classify(armors);
 
-        armor_tracker.track(armors, frame, 1.0 / 70.0);
+        armor_tracker.track(armors, frame);
 
         for (auto& armor : armors) {
             if (armor.color == (detect_color.load() ? "red" : "blue")) {
