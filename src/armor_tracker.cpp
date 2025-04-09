@@ -22,7 +22,7 @@ int ArmorTracker::assignNewID() {
     return current_id_++;
 }
 
-void ArmorTracker::track(vector<Armor>& armors, cv::Mat& frame) {
+void ArmorTracker::track(vector<Armor>& armors, cv::Mat& frame, int frame_count) {
     auto current_time = chrono::high_resolution_clock::now();
     
     // 预测现有跟踪器
@@ -53,12 +53,12 @@ void ArmorTracker::track(vector<Armor>& armors, cv::Mat& frame) {
                 cv::Point3d predict(tracker.ekf_tracker.getState().at<double>(0),
                                 tracker.ekf_tracker.getState().at<double>(1),
                                 tracker.ekf_tracker.getState().at<double>(2));
-                
-                double distance = cv::norm(predict - cv::Point3d(armor.x, armor.y, armor.z));
-                double angle_diff = abs(armor.yaw - tracker.ekf_tracker.getState().at<double>(6));
 
+                double distance = cv::norm(predict - cv::Point3d(armor.x, armor.y, armor.z));
+                double angle_diff = abs(armor.yaw - tracker.armor.yaw);
+                // std::cout << frame_count << ">>>>distance: " << distance << ", angle_diff: " << angle_diff << std::endl;
                 // 综合距离和角度差异，设置匹配阈值
-                if (distance < 0.3 && angle_diff < 0.6) {
+                if (distance < 0.2 || angle_diff < CV_PI / 8.0) {
                     cost_matrix[i][j] = distance * 0.2 + angle_diff * 0.8;
                 } else {
                     cost_matrix[i][j] = numeric_limits<double>::max();
@@ -66,9 +66,20 @@ void ArmorTracker::track(vector<Armor>& armors, cv::Mat& frame) {
             }
         }
     }
+    // std::cout << "cost matrix: " << endl;
+    // for (int i = 0; i < cost_matrix.size(); ++i) {
+    //     for (int j = 0; j < cost_matrix[i].size(); ++j) {
+    //         std::cout << cost_matrix[i][j] << " ";
+    //     }
+    //     std::cout << endl;
+    // }
     
     // 数据关联
     vector<int> match_result = hungarian(cost_matrix);
+    // std::cout << "match result: " << endl;
+    // for (int i = 0; i < match_result.size(); i++) {
+    //     std::cout << "armor " << i << ": " << match_result[i] << endl;
+    // }
     vector<bool> matched(tracked_armors_.size(), false);
 
     // 更新匹配到的跟踪器
@@ -103,7 +114,7 @@ void ArmorTracker::track(vector<Armor>& armors, cv::Mat& frame) {
     }
 
     for (int i = 0; i < tracked_armors_.size(); i++) {
-        if (tracked_armors_[i].lost_count > 1) {
+        if (tracked_armors_[i].lost_count > 0) {
             tracked_armors_.erase(tracked_armors_.begin() + i);
             i--;
         }

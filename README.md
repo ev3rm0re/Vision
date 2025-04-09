@@ -1,6 +1,12 @@
 # 装甲板检测简单实现，基于YOLOv8(openvino推理)
 
-* 目前卡在串口部分，主程序已注释串口代码
+* 效果展示:
+
+    <video width="640" height="480" controls>
+        <source src="./images/demo1.mp4" type="video/mp4">
+    </video>
+
+* 问题: ID跟踪分配还是有概率出错
 
 ## requirements:
 
@@ -48,10 +54,6 @@ namespace里三个类的实现：
 #### 4. number_classifier.cpp
 
 装甲板的数字分类器: 上一个中的ArmorDet类实现了装甲板数据获取，就得到了它的位置数据，根据这个数据再在原画面提取roi，把它传入分类器，就跟数字识别差不多，多层感知分类。
-
-#### 5. serialport.cpp、stream.cpp、timestamp.cpp
-
-串口通讯的类及其附属，全是抄的，有些看不懂，不解释了
 
 ### include文件夹
 
