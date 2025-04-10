@@ -47,6 +47,8 @@ private:
     vector<Armor> match_lights(const vector<Light> &lights, vector<int> &results);
     ArmorType is_armor(const Light &light1, const Light &light2);
     bool containLight(const Light & light1, const Light & light2, const std::vector<Light> & lights);
+
+    vector<string> class_names = {"red", "blue"};
 };
 
 class PnPSolver {

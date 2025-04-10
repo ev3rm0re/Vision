@@ -3,12 +3,12 @@ serial:
   baudrate: 115200
 
 yolo:
-  xml_path: "../models/yolov10n_e10.xml"
-  bin_path: "../models/yolov10n_e10.bin"
+  xml_path: "../models/armor_yolov11s.xml"
+  bin_path: "../models/armor_yolov11s.bin"
 
 camera:
   matrix_path: "../config/camera_matrix.yaml"
-  exposure_time: 1500
+  exposure_time: 1000
   gain: 16.0
 
 number_classifier:

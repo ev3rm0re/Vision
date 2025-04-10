@@ -29,8 +29,8 @@ ov::Tensor YoloDet::infer(const cv::Mat &image) {
     // 推理
 
     cv::Mat letterbox_image = YoloDet::letterbox(image);
-    scale = letterbox_image.size[0] / 640.0;
-    cv::Mat blob = cv::dnn::blobFromImage(letterbox_image, 1.0 / 255.0, cv::Size(640, 640), cv::Scalar(), true);
+    scale = letterbox_image.size[0] / 320.0;
+    cv::Mat blob = cv::dnn::blobFromImage(letterbox_image, 1.0 / 255.0, cv::Size(320, 320), cv::Scalar(), true);
     auto &input_port = compiled_model.input();
     ov::Tensor input_tensor(input_port.get_element_type(), input_port.get_shape(), blob.ptr(0));
     infer_request.set_input_tensor(input_tensor);
@@ -45,17 +45,11 @@ std::vector<std::vector<int>> YoloDet::postprocess(const ov::Tensor &output, con
     cv::Mat output_buffer(output.get_shape()[1], output.get_shape()[2], CV_32F, data); // 创建输出缓冲区
     // cv::transpose(output_buffer, output_buffer);				// 转置
     std::vector<std::vector<int>> results;
-    std::vector<cv::Rect> boxes;
-    std::vector<int> class_ids;
-    std::vector<float> scores;
     // 遍历输出层
     for (int i = 0; i < output_buffer.rows; i++) { // 遍历每个边界框
         // 获取类别得分
         float score = output_buffer.at<float>(i, 4);
-        float class_id = output_buffer.at<float>(i, 5);
         if (score > score_threshold) { // 判断是否满足阈值
-            scores.push_back(score);
-            class_ids.push_back(int(class_id));
             // 获取边界框
             float ltx = output_buffer.at<float>(i, 0);
             float lty = output_buffer.at<float>(i, 1);
@@ -66,15 +60,9 @@ std::vector<std::vector<int>> YoloDet::postprocess(const ov::Tensor &output, con
             int top = int(lty * scale);
             int right = int(rbx * scale);
             int bottom = int(rby * scale);
-            cv::Rect box = cv::Rect(left, top, right - left, bottom - top);
-            boxes.push_back(box);
+            float class_id = output_buffer.at<float>(i, 5);
+            results.emplace_back(vector<int>{left, top, right, bottom, (int)class_id, (int)(score * 100)});
         }
-    }
-    // NMS
-    std::vector<int> indices;
-    cv::dnn::NMSBoxes(boxes, scores, 0.3, 0.5, indices);
-    for (int i = 0; i < indices.size(); i++) {
-        results.push_back(std::vector<int>{boxes[indices[i]].tl().x, boxes[indices[i]].tl().y, boxes[indices[i]].br().x, boxes[indices[i]].br().y, class_ids[indices[i]], (int)(scores[indices[i]] * 100)});
     }
     return results;
 }
@@ -183,7 +171,6 @@ bool ArmorDet::containLight(const Light & light1, const Light & light2, const st
 
 vector<Armor> ArmorDet::match_lights(const vector<Light> &lights, vector<int> &result) {
     vector<Armor> armors;
-    vector<string> class_names = {"red", "blue"};
     // 匹配灯条
     for (size_t i = 0; i < lights.size(); i++) {
         for (size_t j = i + 1; j < lights.size(); j++) {

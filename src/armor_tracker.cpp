@@ -114,7 +114,7 @@ void ArmorTracker::track(vector<Armor>& armors, cv::Mat& frame, int frame_count)
     }
 
     for (int i = 0; i < tracked_armors_.size(); i++) {
-        if (tracked_armors_[i].lost_count > 0) {
+        if (tracked_armors_[i].lost_count > 1) {
             tracked_armors_.erase(tracked_armors_.begin() + i);
             i--;
         }
